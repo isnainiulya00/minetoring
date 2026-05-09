@@ -1,0 +1,11 @@
+# Mengabaikan environment dan cache
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Mengabaikan database lokal
+db.sqlite3
+
+# Mengabaikan file upload user (biar folder media temanmu nggak ketiban)
+media/
