@@ -1,33 +1,75 @@
 from rest_framework import permissions
 
-class IsAdminOrReadOnly(permissions.BasePermission):
-    """
-    Aturan: 
-    - Kalau cuma mau baca data (GET), semua orang yang punya ID Card diizinkan.
-    - Kalau mau nambah/hapus data (POST/DELETE), HANYA Admin/Koordinator yang boleh.
-    """
+
+def _role(user):
+    return getattr(user, 'role', None)
+
+
+class IsAdminRole(permissions.BasePermission):
     def has_permission(self, request, view):
-        # SAFE_METHODS itu adalah metode yang cuma "membaca" (seperti GET)
+        return bool(request.user and request.user.is_authenticated and _role(request.user) == 'ADMIN')
+
+
+class IsKMFRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and _role(request.user) == 'KMF')
+
+
+class IsAdminOrKMF(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return _role(request.user) in ('ADMIN', 'KMF') or request.user.is_staff
+
+
+class IsKMFOrReadOnly(permissions.BasePermission):
+    """KMF full CRUD; others read-only when authenticated."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        
-        # Selain GET (berarti dia mencoba POST, PUT, atau DELETE), 
-        # kita cek apakah dia adalah is_staff (Superuser/Koordinator)
-        return bool(request.user and request.user.is_staff)
-    
+        return _role(request.user) == 'KMF'
+
+
+class IsAdminOrReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return _role(request.user) in ('ADMIN', 'KMF') or request.user.is_staff
+
+
 class IsMentorCanEditMenteeReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
-        # 1. Semua yang login bisa melihat (GET)
+        if not request.user or not request.user.is_authenticated:
+            return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        
-        # 2. Cek apakah user adalah Admin atau Mentor
-        # (Asumsinya Mentor adalah staf atau punya profil mentor)
-        is_staff = request.user.is_staff
-        is_mentor = hasattr(request.user, 'mentor_user') # Sesuai related_name di models.py
-        
-        if is_staff or is_mentor:
+        role = _role(request.user)
+        return role in ('ADMIN', 'KMF', 'MENTOR') or request.user.is_staff
+
+
+class IsResumePermission(permissions.BasePermission):
+    """KMF/Admin full write; Mentee can create/update own; Mentor read-only."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
             return True
-            
-        # 3. Mentee (user biasa) ditolak jika mencoba POST/PUT/DELETE
-        return False
+        role = _role(request.user)
+        return role in ('ADMIN', 'KMF', 'MENTEE')
+
+
+class IsMentorPresensiOnly(permissions.BasePermission):
+    """Mentor/KMF/Admin can write presensi; mentee read-only."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return _role(request.user) in ('ADMIN', 'KMF', 'MENTOR') or request.user.is_staff
