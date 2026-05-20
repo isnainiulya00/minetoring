@@ -10,41 +10,29 @@ import StatCard from '../../components/common/StatCard'
 import { StatCardSkeleton } from '../../components/common/Skeleton'
 import { AttendanceChart, HafalanChart } from '../../components/charts/DashboardChart'
 import { useApi } from '../../hooks/useApi'
-import { halaqahService } from '../../services/halaqahService'
-import { mentorService } from '../../services/mentorService'
-import { menteeService } from '../../services/menteeService'
-import { presensiService } from '../../services/presensiService'
-import { resumeService } from '../../services/resumeService'
-import { hafalanService } from '../../services/hafalanService'
+import { analyticsService } from '../../services/analyticsService'
+import HalaqohRekapTable from '../../components/rekap/HalaqohRekapTable'
 import { useAuthStore } from '../../store/authStore'
 import { formatPercent } from '../../utils/formatters'
 import Card, { CardHeader } from '../../components/common/Card'
-import Badge from '../../components/common/Badge'
 
 export default function AdminDashboard() {
   const user = useAuthStore((s) => s.user)
-  const { data: halaqah, loading: l1 } = useApi(halaqahService.getAll, [])
-  const { data: mentors, loading: l2 } = useApi(mentorService.getAll, [])
-  const { data: mentees, loading: l3 } = useApi(menteeService.getAll, [])
-  const { data: presensi, loading: l4 } = useApi(presensiService.getAll, [])
-  const { data: resumes, loading: l5 } = useApi(resumeService.getAll, [])
-  const { data: hafalan, loading: l6 } = useApi(hafalanService.getAll, [])
+  const { data: stats, loading } = useApi(analyticsService.overview, [])
+  const { data: rekap, loading: rekapLoading } = useApi(analyticsService.rekapHalaqah, [])
 
-  const loading = l1 || l2 || l3 || l4 || l5 || l6
-  const hadirCount = presensi?.filter((p) => p.status === 'HADIR').length ?? 0
-  const hafalanLulus = hafalan?.filter((h) => h.is_lulus).length ?? 0
+  const presensi = stats?.presensi || {}
+  const hadirCount = presensi.HADIR ?? 0
+  const totalPresensi = Object.values(presensi).reduce((a, b) => a + b, 0)
 
   const chartData = [
-    { name: 'Hadir', hadir: hadirCount },
-    { name: 'Izin', hadir: presensi?.filter((p) => p.status === 'IZIN').length ?? 0 },
-    { name: 'Sakit', hadir: presensi?.filter((p) => p.status === 'SAKIT').length ?? 0 },
-    { name: 'Alpha', hadir: presensi?.filter((p) => p.status === 'ALPHA').length ?? 0 },
+    { name: 'Hadir', hadir: presensi.HADIR ?? 0 },
+    { name: 'Izin', hadir: presensi.IZIN ?? 0 },
+    { name: 'Sakit', hadir: presensi.SAKIT ?? 0 },
+    { name: 'Alpha', hadir: presensi.ALPHA ?? 0 },
   ]
 
-  const hafalanChart = (hafalan ?? []).slice(0, 6).map((h) => ({
-    name: h.nama_surah?.slice(0, 10) || 'Surah',
-    progress: h.is_lulus ? 100 : 45,
-  }))
+  const hafalanChart = [{ name: 'Hafalan', progress: stats?.total_hafalan ? 70 : 0 }]
 
   return (
     <div>
@@ -64,14 +52,14 @@ export default function AdminDashboard() {
           Array.from({ length: 4 }).map((_, i) => <StatCardSkeleton key={i} />)
         ) : (
           <>
-            <StatCard icon={HiOutlineUserGroup} label="Total Halaqah" value={halaqah?.length ?? 0} delay={0} />
-            <StatCard icon={HiOutlineUserGroup} label="Total Mentor" value={mentors?.length ?? 0} delay={1} />
-            <StatCard icon={HiOutlineUserGroup} label="Total Mentee" value={mentees?.length ?? 0} delay={2} />
+            <StatCard icon={HiOutlineUserGroup} label="Total Halaqah" value={stats?.total_halaqah ?? 0} delay={0} />
+            <StatCard icon={HiOutlineUserGroup} label="Total Mentor" value={stats?.total_mentor ?? 0} delay={1} />
+            <StatCard icon={HiOutlineUserGroup} label="Total Mentee" value={stats?.total_mentee ?? 0} delay={2} />
             <StatCard
               icon={HiOutlineClipboardDocumentCheck}
               label="Kehadiran Hadir"
               value={hadirCount}
-              trend={`${formatPercent(hadirCount, presensi?.length || 1)}% dari ${presensi?.length ?? 0} presensi`}
+              trend={`${formatPercent(hadirCount, totalPresensi || 1)}% dari ${totalPresensi} presensi`}
               delay={3}
             />
           </>
@@ -84,14 +72,14 @@ export default function AdminDashboard() {
             <StatCard
               icon={HiOutlineDocumentText}
               label="Resume Terkumpul"
-              value={resumes?.filter((r) => r.file).length ?? 0}
-              trend={`${resumes?.length ?? 0} entri`}
+              value={stats?.total_resume ?? 0}
+              trend="Resume terkumpul"
               delay={4}
             />
             <StatCard
               icon={HiOutlineAcademicCap}
               label="Hafalan Lulus"
-              value={`${hafalanLulus}/${hafalan?.length || 0}`}
+              value={stats?.total_hafalan ?? 0}
               trend="Performance overview"
               delay={5}
             />
@@ -106,19 +94,8 @@ export default function AdminDashboard() {
       </div>
 
       <Card className="mt-6 glass-card" glass>
-        <CardHeader title="Aktivitas Terbaru" subtitle="Ringkasan monitoring real-time" />
-        <div className="space-y-3">
-          {(presensi ?? []).slice(0, 5).map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center justify-between rounded-xl border border-gray-100 bg-white/80 px-4 py-3"
-            >
-              <span className="text-sm text-gray-700">Presensi #{p.id}</span>
-              <Badge variant={p.status === 'HADIR' ? 'success' : 'neutral'}>{p.status}</Badge>
-            </div>
-          ))}
-          {!presensi?.length && <p className="text-sm text-gray-500">Belum ada aktivitas presensi.</p>}
-        </div>
+        <CardHeader title="Rekap per Halaqah" subtitle="Executive monitoring" />
+        <HalaqohRekapTable data={rekap} loading={rekapLoading} />
       </Card>
     </div>
   )

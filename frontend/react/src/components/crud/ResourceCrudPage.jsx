@@ -27,6 +27,7 @@ export default function ResourceCrudPage({
   canCreate = true,
   canDelete = true,
   getInitialForm,
+  renderRow,
 }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -90,24 +91,27 @@ export default function ResourceCrudPage({
           <Table
             columns={columns}
             data={paginated}
-            renderRow={(row) => (
-              <>
-                {columns
-                  .filter((c) => c.key !== 'aksi')
-                  .map((c) => (
-                    <td key={c.key} className="px-4 py-3 text-sm">
-                      {row[c.key] ?? '-'}
+            renderRow={
+              renderRow ||
+              ((row) => (
+                <>
+                  {columns
+                    .filter((c) => c.key !== 'aksi')
+                    .map((c) => (
+                      <td key={c.key} className="px-4 py-3 text-sm">
+                        {c.render ? c.render(row) : row[c.key] ?? '-'}
+                      </td>
+                    ))}
+                  {canDelete && (
+                    <td className="px-4 py-3">
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>
+                        Hapus
+                      </Button>
                     </td>
-                  ))}
-                {canDelete && (
-                  <td className="px-4 py-3">
-                    <Button size="sm" variant="danger" onClick={() => handleDelete(row.id)}>
-                      Hapus
-                    </Button>
-                  </td>
-                )}
-              </>
-            )}
+                  )}
+                </>
+              ))
+            }
           />
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>

@@ -16,6 +16,10 @@ export function isMentee(user) {
   return user?.role === ROLES.MENTEE
 }
 
+export function isMonitoring(user) {
+  return isAdmin(user) || isKMF(user)
+}
+
 export function canManageUsers(user) {
   return isKMF(user)
 }
@@ -32,31 +36,56 @@ export function canManageMentee(user) {
   return isKMF(user)
 }
 
-export function canManageSertifikat(user) {
+export function canManageJadwal(user) {
   return isKMF(user)
 }
 
+export function canManageMateri(user) {
+  return isKMF(user)
+}
+
+/** LPPIK only — CRUD sertifikat */
+export function canManageSertifikat(user) {
+  return isAdmin(user)
+}
+
+export function canViewSertifikat(user) {
+  return true
+}
+
+/** Hanya mentor yang boleh mengubah presensi */
 export function canEditPresensi(user) {
-  return isKMF(user) || isMentor(user)
+  return isMentor(user)
+}
+
+export function canViewPresensiRekap(user) {
+  return isMonitoring(user) || isMentor(user) || isMentee(user)
 }
 
 export function canEditHafalan(user) {
-  return isKMF(user) || isMentor(user)
+  return isMentor(user)
 }
 
-export function canEditResume(user) {
-  return isKMF(user) || isMentee(user)
+export function canUploadResume(user) {
+  return isMentee(user)
+}
+
+export function canGradeResume(user) {
+  return isMentor(user)
+}
+
+export function canViewRekapHalaqoh(user) {
+  return isMonitoring(user) || isMentor(user)
 }
 
 export function getDashboardPath() {
   return '/dashboard'
 }
 
-export function getLoginRedirectPath(user) {
-  return getDashboardPath()
+export function getLoginRedirectPath() {
+  return '/dashboard'
 }
 
-/** Route path -> allowed roles (empty = all authenticated) */
 export const ROUTE_ACCESS = {
   '/dashboard': [],
   '/monitoring': [ROLES.ADMIN],
@@ -71,7 +100,7 @@ export const ROUTE_ACCESS = {
   '/resume': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
   '/hafalan': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
   '/sertifikat': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/materi': [ROLES.KMF],
+  '/materi': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
   '/profile': [],
   '/settings': [],
 }
@@ -94,31 +123,31 @@ export function getNavItems(user) {
       { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
       { path: '/monitoring', label: 'Monitoring', icon: 'monitoring' },
       { path: '/analytics', label: 'Analytics', icon: 'analytics' },
-      { path: '/reports', label: 'Reports', icon: 'reports' },
+      { path: '/reports', label: 'Rekap', icon: 'reports' },
       { path: '/halaqah', label: 'Halaqah', icon: 'halaqah' },
+      { path: '/materi', label: 'Materi', icon: 'materi' },
       { path: '/presensi', label: 'Presensi', icon: 'presensi' },
       { path: '/resume', label: 'Resume', icon: 'resume' },
       { path: '/hafalan', label: 'Hafalan', icon: 'hafalan' },
       { path: '/sertifikat', label: 'Sertifikat', icon: 'sertifikat' },
       { path: '/profile', label: 'Profil', icon: 'profile' },
-      { path: '/settings', label: 'Pengaturan', icon: 'settings' },
     ]
   }
 
   if (role === ROLES.KMF) {
     return [
       { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-      { path: '/users', label: 'User Management', icon: 'users' },
+      { path: '/users', label: 'User', icon: 'users' },
       { path: '/mentor', label: 'Mentor', icon: 'mentor' },
       { path: '/mentee', label: 'Mentee', icon: 'mentee' },
       { path: '/halaqah', label: 'Halaqah', icon: 'halaqah' },
-      { path: '/jadwal', label: 'Jadwal', icon: 'jadwal' },
+      { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
+      { path: '/materi', label: 'Materi', icon: 'materi' },
       { path: '/presensi', label: 'Presensi', icon: 'presensi' },
       { path: '/resume', label: 'Resume', icon: 'resume' },
       { path: '/hafalan', label: 'Hafalan', icon: 'hafalan' },
       { path: '/sertifikat', label: 'Sertifikat', icon: 'sertifikat' },
       { path: '/profile', label: 'Profil', icon: 'profile' },
-      { path: '/settings', label: 'Pengaturan', icon: 'settings' },
     ]
   }
 
@@ -126,13 +155,13 @@ export function getNavItems(user) {
     return [
       { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
       { path: '/presensi', label: 'Presensi', icon: 'presensi' },
-      { path: '/hafalan', label: 'Hafalan', icon: 'hafalan' },
-      { path: '/halaqah', label: 'Halaqah', icon: 'halaqah' },
-      { path: '/jadwal', label: 'Jadwal', icon: 'jadwal' },
+      { path: '/hafalan', label: 'Mutabaah', icon: 'hafalan' },
       { path: '/resume', label: 'Resume', icon: 'resume' },
+      { path: '/jadwal', label: 'Jadwal', icon: 'jadwal' },
+      { path: '/materi', label: 'Materi', icon: 'materi' },
+      { path: '/halaqah', label: 'Halaqah', icon: 'halaqah' },
       { path: '/sertifikat', label: 'Sertifikat', icon: 'sertifikat' },
       { path: '/profile', label: 'Profil', icon: 'profile' },
-      { path: '/settings', label: 'Pengaturan', icon: 'settings' },
     ]
   }
 
@@ -140,11 +169,10 @@ export function getNavItems(user) {
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/resume', label: 'Resume', icon: 'resume' },
     { path: '/jadwal', label: 'Jadwal', icon: 'jadwal' },
-    { path: '/halaqah', label: 'Halaqah Saya', icon: 'halaqah' },
-    { path: '/presensi', label: 'Presensi Saya', icon: 'presensi' },
-    { path: '/sertifikat', label: 'Sertifikat Saya', icon: 'sertifikat' },
-    { path: '/hafalan', label: 'Hafalan Saya', icon: 'hafalan' },
+    { path: '/materi', label: 'Materi', icon: 'materi' },
+    { path: '/presensi', label: 'Presensi', icon: 'presensi' },
+    { path: '/hafalan', label: 'Hafalan', icon: 'hafalan' },
+    { path: '/sertifikat', label: 'Sertifikat', icon: 'sertifikat' },
     { path: '/profile', label: 'Profil', icon: 'profile' },
-    { path: '/settings', label: 'Pengaturan', icon: 'settings' },
   ]
 }

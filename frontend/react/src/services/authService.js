@@ -1,5 +1,5 @@
 import axios from 'axios'
-import api from '../api/axios'
+import api, { multipartConfig } from '../api/axios'
 import { API_BASE_URL } from '../utils/constants'
 
 export const authService = {
@@ -19,7 +19,17 @@ export const authService = {
   },
 
   updateUser: async (userId, payload) => {
-    const { data } = await api.patch(`/api/user/${userId}/`, payload)
+    const { data } = await api.patch(`/api/user/${userId}/`, payload, multipartConfig(payload))
+    return data
+  },
+
+  getMe: async () => {
+    const { data } = await api.get('/api/user/me/')
+    return data
+  },
+
+  updateMe: async (payload) => {
+    const { data } = await api.patch('/api/user/me/', payload, multipartConfig(payload))
     return data
   },
 }

@@ -1,42 +1,31 @@
+import { useState } from 'react'
 import PageHeader from '../../components/common/PageHeader'
-import Card, { CardHeader } from '../../components/common/Card'
+import HalaqohRekapTable from '../../components/rekap/HalaqohRekapTable'
 import { useApi } from '../../hooks/useApi'
-import { halaqahService } from '../../services/halaqahService'
-import { mentorService } from '../../services/mentorService'
-import { menteeService } from '../../services/menteeService'
-import { presensiService } from '../../services/presensiService'
-import { TableSkeleton } from '../../components/common/Skeleton'
+import { analyticsService } from '../../services/analyticsService'
 
 export default function Reports() {
-  const { data: halaqah, loading: l1 } = useApi(halaqahService.getAll, [])
-  const { data: mentors, loading: l2 } = useApi(mentorService.getAll, [])
-  const { data: mentees, loading: l3 } = useApi(menteeService.getAll, [])
-  const { data: presensi, loading: l4 } = useApi(presensiService.getAll, [])
-  const loading = l1 || l2 || l3 || l4
-
-  if (loading) return <TableSkeleton />
+  const [semester, setSemester] = useState('')
+  const { data: rekap, loading, refetch } = useApi(
+    () => analyticsService.rekapHalaqah(semester || undefined),
+    [semester],
+  )
 
   return (
     <div>
-      <PageHeader title="Reports" subtitle="Laporan ringkas sistem mentoring" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card glass>
-          <CardHeader title="Ringkasan Populasi" />
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>Halaqah aktif: {halaqah?.length ?? 0}</li>
-            <li>Total mentor: {mentors?.length ?? 0}</li>
-            <li>Total mentee: {mentees?.length ?? 0}</li>
-          </ul>
-        </Card>
-        <Card glass>
-          <CardHeader title="Ringkasan Presensi" />
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>Total entri presensi: {presensi?.length ?? 0}</li>
-            <li>Hadir: {presensi?.filter((p) => p.status === 'HADIR').length ?? 0}</li>
-            <li>Alpha: {presensi?.filter((p) => p.status === 'ALPHA').length ?? 0}</li>
-          </ul>
-        </Card>
+      <PageHeader title="Rekap Mentoring" subtitle="Ringkasan per halaqah — LPPIK" />
+      <div className="mb-4 flex items-center gap-3">
+        <label className="text-sm font-medium text-gray-700">Filter semester:</label>
+        <input
+          type="text"
+          placeholder="Semua semester"
+          value={semester}
+          onChange={(e) => setSemester(e.target.value)}
+          onBlur={refetch}
+          className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
+        />
       </div>
+      <HalaqohRekapTable data={rekap} loading={loading} />
     </div>
   )
 }

@@ -27,7 +27,7 @@ export default function MentorDashboard() {
     <div>
       <PageHeader
         title={`Dashboard Mentor — ${user?.first_name || user?.username}`}
-        subtitle="Kelola presensi & hafalan kelompok Anda"
+        subtitle="Kelola presensi & hafalan Halaqoh Anda"
       />
 
       <div className="grid gap-4 sm:grid-cols-3">

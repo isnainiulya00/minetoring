@@ -45,7 +45,7 @@ export default function KMFDashboard() {
     <div>
       <PageHeader
         title={`Management — ${user?.first_name || user?.username}`}
-        subtitle="Koordinator Mentoring Fakultas · CRUD & operasional"
+        subtitle="Koordinator Mentoring Fakultas"
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

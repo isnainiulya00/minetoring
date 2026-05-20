@@ -24,7 +24,13 @@ export default function MenteeDashboard() {
   const { data: resumes, loading: l3 } = useApi(resumeService.getAll, [])
   const loading = l1 || l2 || l3
 
-  const hadir = presensi?.filter((p) => p.status === 'HADIR').length ?? 0
+  const counts = {
+    HADIR: presensi?.filter((p) => p.status === 'HADIR').length ?? 0,
+    IZIN: presensi?.filter((p) => p.status === 'IZIN').length ?? 0,
+    SAKIT: presensi?.filter((p) => p.status === 'SAKIT').length ?? 0,
+    ALPHA: presensi?.filter((p) => p.status === 'ALPHA').length ?? 0,
+  }
+  const hadir = counts.HADIR
   const hafalanLulus = hafalan?.filter((h) => h.is_lulus).length ?? 0
   const progress = formatPercent(hadir, presensi?.length || 1)
 
@@ -39,6 +45,11 @@ export default function MenteeDashboard() {
         <p className="text-sm font-medium text-gray-700">Progress Mentoring</p>
         <ProgressBar value={hadir} max={presensi?.length || 1} className="mt-3" />
         <p className="mt-2 text-xs text-gray-500">{progress}% kehadiran dari total pertemuan</p>
+        {!loading && (
+          <p className="mt-2 text-xs text-gray-600">
+            Hadir {counts.HADIR}x · Izin {counts.IZIN}x · Sakit {counts.SAKIT}x · Alpha {counts.ALPHA}x
+          </p>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

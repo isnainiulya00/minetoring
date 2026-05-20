@@ -1,11 +1,14 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import Sertifikat, User, Koordinator, Mentor, Mentee, Halaqah, Jadwal, Presensi, Resume, Hafalan
+from .models import (
+    Hafalan, Halaqah, Jadwal, Koordinator, MateriMentoring, Mentee, Mentor,
+    Presensi, Resume, Sertifikat, User,
+)
 
 class CustomUserAdmin(UserAdmin):
     fieldsets = UserAdmin.fieldsets + (
         ('Role Information', {
-            'fields': ('role',),
+            'fields': ('role', 'foto', 'no_hp'),
         }),
     )
 
@@ -25,3 +28,4 @@ admin.site.register(Presensi)
 admin.site.register(Resume)
 admin.site.register(Hafalan)
 admin.site.register(Sertifikat)
+admin.site.register(MateriMentoring)

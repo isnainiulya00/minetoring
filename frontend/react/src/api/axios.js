@@ -47,10 +47,21 @@ export function isTokenExpired(token) {
   }
 }
 
+/** Let the browser set multipart boundary for FormData uploads */
+export function multipartConfig(data) {
+  if (data instanceof FormData) {
+    return { headers: { 'Content-Type': 'multipart/form-data' } }
+  }
+  return {}
+}
+
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
   if (token && !isTokenExpired(token)) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
   }
   return config
 })

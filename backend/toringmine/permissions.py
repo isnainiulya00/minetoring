@@ -1,75 +1,98 @@
 from rest_framework import permissions
 
 
-def _role(user):
-    return getattr(user, 'role', None)
+def role(user):
+    return getattr(user, 'role', None) if user and user.is_authenticated else None
 
 
-class IsAdminRole(permissions.BasePermission):
+class IsAuthenticatedRole(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and _role(request.user) == 'ADMIN')
+        return bool(request.user and request.user.is_authenticated)
 
 
-class IsKMFRole(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and _role(request.user) == 'KMF')
-
-
-class IsAdminOrKMF(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        return _role(request.user) in ('ADMIN', 'KMF') or request.user.is_staff
-
-
-class IsKMFOrReadOnly(permissions.BasePermission):
-    """KMF full CRUD; others read-only when authenticated."""
+class IsKMFWrite(permissions.BasePermission):
+    """KMF: full write on master data. Others: read-only."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        return _role(request.user) == 'KMF'
+        return role(request.user) == 'KMF'
 
 
-class IsAdminOrReadOnly(permissions.BasePermission):
+class IsJadwalWrite(permissions.BasePermission):
+    """KMF: full CRUD jadwal. Mentor: PATCH laporan/kehadiran only."""
+
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        return _role(request.user) in ('ADMIN', 'KMF') or request.user.is_staff
+        r = role(request.user)
+        if r == 'KMF':
+            return True
+        if r == 'MENTOR' and request.method in ('PATCH', 'PUT'):
+            return True
+        return False
 
 
-class IsMentorCanEditMenteeReadOnly(permissions.BasePermission):
+class IsAdminSertifikatWrite(permissions.BasePermission):
+    """ADMIN: CRUD sertifikat. KMF & others: read-only."""
+
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        role = _role(request.user)
-        return role in ('ADMIN', 'KMF', 'MENTOR') or request.user.is_staff
+        return role(request.user) == 'ADMIN'
+
+
+class IsMentorPresensiWrite(permissions.BasePermission):
+    """Only MENTOR can create/update/delete presensi."""
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return role(request.user) == 'MENTOR'
+
+
+class IsMentorHafalanWrite(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return role(request.user) == 'MENTOR'
+
+
+class IsKMFMateriWrite(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return role(request.user) == 'KMF'
 
 
 class IsResumePermission(permissions.BasePermission):
-    """KMF/Admin full write; Mentee can create/update own; Mentor read-only."""
+    """MENTEE: CRUD own resume file. MENTOR: grade only. Others: read."""
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
         if request.method in permissions.SAFE_METHODS:
             return True
-        role = _role(request.user)
-        return role in ('ADMIN', 'KMF', 'MENTEE')
+        return role(request.user) in ('MENTEE', 'MENTOR')
 
 
-class IsMentorPresensiOnly(permissions.BasePermission):
-    """Mentor/KMF/Admin can write presensi; mentee read-only."""
-
+class IsOwnProfileOrKMF(permissions.BasePermission):
     def has_permission(self, request, view):
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.method in permissions.SAFE_METHODS:
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request, view, obj):
+        if role(request.user) == 'KMF':
             return True
-        return _role(request.user) in ('ADMIN', 'KMF', 'MENTOR') or request.user.is_staff
+        return obj.id == request.user.id

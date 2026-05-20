@@ -34,6 +34,10 @@ function RoleRoute({ path, roles, children }) {
   )
 }
 
+function GuardedRoute({ path, children }) {
+  return <RoleProtectedRoute path={path}>{children}</RoleProtectedRoute>
+}
+
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -110,16 +114,16 @@ export default function AppRoutes() {
             }
           />
 
-          <Route path="halaqah" element={<HalaqahList />} />
-          <Route path="halaqah/:id" element={<HalaqahDetail />} />
-          <Route path="jadwal" element={<Jadwal />} />
-          <Route path="presensi" element={<Presensi />} />
-          <Route path="materi" element={<Materi />} />
-          <Route path="resume" element={<Resume />} />
-          <Route path="hafalan" element={<Hafalan />} />
-          <Route path="sertifikat" element={<Sertifikat />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
+          <Route path="halaqah" element={<GuardedRoute path="/halaqah"><HalaqahList /></GuardedRoute>} />
+          <Route path="halaqah/:id" element={<GuardedRoute path="/halaqah"><HalaqahDetail /></GuardedRoute>} />
+          <Route path="jadwal" element={<GuardedRoute path="/jadwal"><Jadwal /></GuardedRoute>} />
+          <Route path="presensi" element={<GuardedRoute path="/presensi"><Presensi /></GuardedRoute>} />
+          <Route path="materi" element={<GuardedRoute path="/materi"><Materi /></GuardedRoute>} />
+          <Route path="resume" element={<GuardedRoute path="/resume"><Resume /></GuardedRoute>} />
+          <Route path="hafalan" element={<GuardedRoute path="/hafalan"><Hafalan /></GuardedRoute>} />
+          <Route path="sertifikat" element={<GuardedRoute path="/sertifikat"><Sertifikat /></GuardedRoute>} />
+          <Route path="profile" element={<GuardedRoute path="/profile"><Profile /></GuardedRoute>} />
+          <Route path="settings" element={<GuardedRoute path="/settings"><Settings /></GuardedRoute>} />
         </Route>
 
         <Route path="/forbidden" element={<Forbidden />} />

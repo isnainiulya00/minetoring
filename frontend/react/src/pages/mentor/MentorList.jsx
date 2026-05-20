@@ -7,15 +7,17 @@ export default function MentorList() {
       title="Data Mentor"
       subtitle="Kelola profil mentor mentoring fakultas"
       service={mentorService}
-      searchKeys={['nama_lengkap', 'no_hp']}
+      searchKeys={['nama_lengkap', 'nim','no_hp']}
       columns={[
         { key: 'nama_lengkap', label: 'Nama' },
+        { key: 'nim', label: 'NIM' },
         { key: 'no_hp', label: 'No. HP' },
         { key: 'user', label: 'User ID' },
         { key: 'aksi', label: 'Aksi' },
       ]}
       fields={[
         { key: 'nama_lengkap', label: 'Nama Lengkap', required: true },
+        { key: 'nim', label: 'NIM', required: true },
         { key: 'no_hp', label: 'No. HP' },
         { key: 'user', label: 'User ID', type: 'number', required: true },
       ]}
