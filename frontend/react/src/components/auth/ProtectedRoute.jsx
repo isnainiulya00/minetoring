@@ -1,15 +1,31 @@
-import { Navigate, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+
 import { useAuthStore } from '../../store/authStore'
-export default function ProtectedRoute({ children, roles }) {
+
+export default function ProtectedRoute({ children, roles = [] }) {
   const location = useLocation()
-  const { isAuthenticated, user, loadUser } = useAuthStore()
+
+  const {
+    user,
+    isAuthenticated,
+    loadUser,
+  } = useAuthStore()
+
   const [checking, setChecking] = useState(true)
 
+  // ===============================
+  // Auth check saat halaman dibuka
+  // ===============================
   useEffect(() => {
-    loadUser().finally(() => setChecking(false))
-  }, [loadUser])
+    loadUser().finally(() => {
+      setChecking(false)
+    })
+  }, [])
 
+  // ===============================
+  // Loading screen
+  // ===============================
   if (checking) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f5f5f5]">
@@ -18,13 +34,32 @@ export default function ProtectedRoute({ children, roles }) {
     )
   }
 
+  // ===============================
+  // Belum login
+  // ===============================
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location }}
+        replace
+      />
+    )
   }
 
-  if (roles?.length && user && !roles.includes(user.role) && !user.is_staff) {
+  // ===============================
+  // Role tidak sesuai
+  // ===============================
+  const hasAccess =
+    roles.length === 0 ||
+    roles.includes(user?.role)
+
+  if (!hasAccess) {
     return <Navigate to="/forbidden" replace />
   }
 
+  // ===============================
+  // Halaman boleh diakses
+  // ===============================
   return children
 }

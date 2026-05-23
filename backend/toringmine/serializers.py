@@ -1,8 +1,11 @@
 from django.db.models import Count, Q
 from rest_framework import serializers
+from django.db import transaction
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework.exceptions import AuthenticationFailed
+from django.contrib.auth.models import User
 
 from .models import (
-    Hafalan,
     Halaqah,
     Jadwal,
     Koordinator,
@@ -13,6 +16,9 @@ from .models import (
     Resume,
     Sertifikat,
     User,
+    JurnalPertemuan,
+    Mutabaah,
+    InformasiKegiatan,
 )
 
 
@@ -28,6 +34,10 @@ def presensi_summary(mentee):
     }
 
 
+# ==========================================
+# 1. USER & PROFIL
+# ==========================================
+
 class UserSerializer(serializers.ModelSerializer):
     foto_url = serializers.SerializerMethodField()
 
@@ -35,7 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'id', 'username', 'password', 'email', 'first_name', 'last_name',
-            'role', 'is_active', 'foto', 'foto_url', 'no_hp',
+            'role', 'nim', 'is_active', 'foto', 'foto_url', 'no_hp',
         ]
         extra_kwargs = {
             'password': {'write_only': True, 'required': False},
@@ -55,12 +65,17 @@ class UserSerializer(serializers.ModelSerializer):
         if not password:
             raise serializers.ValidationError({'password': 'Password wajib diisi.'})
         role_val = validated_data.get('role', 'MENTEE')
-        validated_data['is_staff'] = role_val in ('ADMIN', 'KMF')
-        validated_data['is_superuser'] = role_val == 'ADMIN'
+        
+        validated_data['is_staff'] = role_val in ('LPPIK', 'KMF')
+        validated_data['is_superuser'] = role_val == 'LPPIK'
+        
         user = User(**validated_data)
         user.set_password(password)
         user.save()
-        self._ensure_profile(user)
+        
+        # HAPUS ATAU JADIKAN KOMENTAR BARIS DI BAWAH INI:
+        # self._ensure_profile(user) 
+        
         return user
 
     def update(self, instance, validated_data):
@@ -68,9 +83,11 @@ class UserSerializer(serializers.ModelSerializer):
         role_val = validated_data.get('role', instance.role)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        
         if role_val:
-            instance.is_staff = role_val in ('ADMIN', 'KMF')
-            instance.is_superuser = role_val == 'ADMIN'
+            instance.is_staff = role_val in ('LPPIK', 'KMF')
+            instance.is_superuser = role_val == 'LPPIK'
+        
         if password:
             instance.set_password(password)
         instance.save()
@@ -86,7 +103,7 @@ class UserSerializer(serializers.ModelSerializer):
             Mentee.objects.get_or_create(
                 user=user,
                 defaults={
-                    'nim': f'NIM-{user.id}',
+                    'nim': user.nim or f'NIM-{user.id}',
                     'nama_lengkap': user.get_full_name() or user.username,
                     'prodi': '',
                 },
@@ -102,22 +119,99 @@ class UserSerializer(serializers.ModelSerializer):
         data.pop('password', None)
         return data
 
+class AddUserByKMFSerializer(serializers.Serializer):
+    """Digunakan khusus saat KMF menambah Mentor/Mentee secara manual via Frontend"""
+    username = serializers.CharField(max_length=150)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    
+    # 👇 UBAH: Dibuat opsional dan default-nya dihilangkan
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES)
+    nim = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    prodi = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    fakultas = serializers.CharField(max_length=100, required=False, allow_blank=True)
+    no_hp = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+    def validate_nim(self, value):
+        from .models import User
+        if value and User.objects.filter(nim=value).exists():
+            raise serializers.ValidationError("NIM ini sudah terdaftar di sistem!")
+        return value
+
+    def validate_username(self, value):
+        from .models import User
+        if value and User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Akun dengan Username/NIM ini sudah ada.")
+        return value
+
+    def create(self, validated_data):
+        with transaction.atomic():
+            # Tangkap password dari form jika ada
+            password_input = validated_data.pop('password', None)
+            nim_input = validated_data.get('nim')
+            username_input = validated_data.get('username')
+            
+            # 👇 LOGIKA BARU: Jika password kosong, otomatis pakai NIM. 
+            # Jika NIM juga kosong, pakai Username.
+            final_password = password_input or nim_input or username_input
+
+            user = User.objects.create(
+                username=username_input,
+                email=validated_data.get('email', ''),
+                role=validated_data['role'],
+                nim=nim_input,
+                first_name=validated_data.get('first_name', ''), 
+                last_name=validated_data.get('last_name', ''),
+                no_hp=validated_data.get('no_hp', '')
+            )
+            
+            # Set password menggunakan NIM/Username tadi
+            user.set_password(final_password)
+            user.save()
+
+            return user
+class KoordinatorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Koordinator
+        fields = '__all__'
+
 
 class MentorSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source='user.username', read_only=True)
+    # Tarik data dari tabel User murni untuk DITAMPILKAN saja di tabel React (Read-Only)
+    nim = serializers.CharField(source='user.nim', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    nama_kelompok_halaqah = serializers.SerializerMethodField()
 
     class Meta:
         model = Mentor
         fields = '__all__'
+        # ❌ depth = 1 DIHAPUS
+        # ❌ fungsi def update DIHAPUS
+    def get_nama_kelompok_halaqah(self, obj):
+        from .models import Halaqah  # Pastikan import model Halaqah
+        
+        # Cari halaqah yang diampu oleh mentor ini
+        halaqah = Halaqah.objects.filter(mentor=obj).first()
+        if halaqah:
+            return halaqah.nama_kelompok
+        return None
 
 
 class MenteeSerializer(serializers.ModelSerializer):
     presensi_summary = serializers.SerializerMethodField()
     halaqah_nama = serializers.CharField(source='halaqah.nama_kelompok', read_only=True)
+    
+    # Tarik email dari tabel User untuk info (NIM sudah ada bawaan di model Mentee)
+    email = serializers.CharField(source='user.email', read_only=True)
 
     class Meta:
         model = Mentee
         fields = '__all__'
+        # ❌ depth = 1 DIHAPUS
+        # ❌ fungsi def update DIHAPUS
 
     def get_presensi_summary(self, obj):
         return presensi_summary(obj)
@@ -126,6 +220,15 @@ class MenteeSerializer(serializers.ModelSerializer):
 class HalaqahSerializer(serializers.ModelSerializer):
     mentor_nama = serializers.CharField(source='mentor.nama_lengkap', read_only=True)
     jumlah_mentee = serializers.SerializerMethodField()
+    
+    # 👇 1. JEMBATAN UNTUK REACT
+    # Mengajari Django untuk mengirim & menerima array ID dengan nama 'mentees'
+    mentees = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Mentee.objects.all(),
+        source='anggota_mentee', # Sesuai dengan related_name di models.py
+        required=False
+    )
 
     class Meta:
         model = Halaqah
@@ -134,53 +237,84 @@ class HalaqahSerializer(serializers.ModelSerializer):
     def get_jumlah_mentee(self, obj):
         return obj.anggota_mentee.count()
 
+    # 👇 2. AJARI CARA MENYIMPAN SAAT CREATE
+    def create(self, validated_data):
+        mentees_data = validated_data.pop('anggota_mentee', [])
+        halaqah = Halaqah.objects.create(**validated_data)
+        
+        # Masukkan mentee yang di-ceklis ke halaqah ini
+        for mentee in mentees_data:
+            mentee.halaqah = halaqah
+            mentee.save()
+            
+        return halaqah
 
+    # 👇 3. AJARI CARA MENYIMPAN SAAT EDIT
+    def update(self, instance, validated_data):
+        mentees_data = validated_data.pop('anggota_mentee', None)
+        
+        # Update data halaqah (nama, tingkat, mentor, dll)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Update daftar mentee jika ada yang di-ceklis / di-uncheck
+        if mentees_data is not None:
+            # Kosongkan halaqah dari mentee lama terlebih dahulu
+            instance.anggota_mentee.all().update(halaqah=None)
+            # Pasangkan halaqah ke mentee yang baru dipilih
+            for mentee in mentees_data:
+                mentee.halaqah = instance
+                mentee.save()
+                
+        return instance
+
+
+# ==========================================
+# 2. KURIKULUM GLOBAL
+# ==========================================
+
+from rest_framework import serializers
+from .models import Jadwal, MateriMentoring
+
+# 1. Serializer untuk Materi
+class MateriMentoringSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MateriMentoring
+        # Pastikan namanya sama persis dengan yang kita ubah di models.py
+        fields = ['id', 'topik', 'deskripsi', 'file', 'url']
+
+# 2. Serializer untuk Jadwal
 class JadwalSerializer(serializers.ModelSerializer):
-    halaqah_nama = serializers.CharField(source='halaqah.nama_kelompok', read_only=True)
-    materi = serializers.SerializerMethodField()
+    # INI KUNCI UTAMANYA: 
+    # Kita suruh Django mengemas data materi secara UTUH (termasuk topik dll), 
+    # bukan cuma mengirim angka ID-nya saja.
+    # Nama 'materi' di sini harus sama dengan related_name='materi' di models.py
+    materi = MateriMentoringSerializer(many=True, read_only=True)
 
     class Meta:
         model = Jadwal
-        fields = '__all__'
+        fields = ['id', 'pertemuan_ke', 'semester', 'tanggal', 'materi']
 
-    def get_materi(self, obj):
-        if hasattr(obj, 'materi'):
-            return MateriMentoringSerializer(obj.materi, context=self.context).data
-        return None
+# ==========================================
+# 3. EKSEKUSI & PRESENSI (PER HALAQAH)
+# ==========================================
 
-
-class MateriMentoringSerializer(serializers.ModelSerializer):
-    file_url = serializers.SerializerMethodField()
-    jadwal_label = serializers.SerializerMethodField()
+class JurnalPertemuanSerializer(serializers.ModelSerializer):
+    halaqah_nama = serializers.CharField(source='halaqah.nama_kelompok', read_only=True)
+    pertemuan_ke = serializers.IntegerField(source='jadwal.pertemuan_ke', read_only=True)
+    topik_jadwal = serializers.CharField(source='jadwal.topik', read_only=True)
+    pengisi_nama = serializers.CharField(source='diisi_oleh.get_full_name', read_only=True, default='')
 
     class Meta:
-        model = MateriMentoring
+        model = JurnalPertemuan
         fields = '__all__'
-
-    def get_file_url(self, obj):
-        if obj.file:
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None
-
-    def get_jadwal_label(self, obj):
-        return f"Pertemuan {obj.jadwal.pertemuan_ke} - {obj.jadwal.halaqah.nama_kelompok}"
-
-    def validate(self, attrs):
-        tipe = attrs.get('tipe', getattr(self.instance, 'tipe', 'FILE'))
-        if tipe == 'LINK' and not attrs.get('link_url') and not (self.instance and self.instance.link_url):
-            raise serializers.ValidationError({'link_url': 'Tautan wajib diisi untuk tipe LINK.'})
-        if tipe == 'FILE' and self.context.get('request') and self.context['request'].method == 'POST':
-            if not attrs.get('file') and not attrs.get('link_url'):
-                pass
-        return attrs
 
 
 class PresensiSerializer(serializers.ModelSerializer):
     mentee_nama = serializers.CharField(source='mentee.nama_lengkap', read_only=True)
-    pertemuan_ke = serializers.IntegerField(source='jadwal.pertemuan_ke', read_only=True)
+    # Narik nomor pertemuan dari relasi Jurnal -> Jadwal
+    pertemuan_ke = serializers.IntegerField(source='jurnal.jadwal.pertemuan_ke', read_only=True)
     surat_izin_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -203,6 +337,10 @@ class PresensiSerializer(serializers.ModelSerializer):
         return attrs
 
 
+# ==========================================
+# 4. PENILAIAN & MUTABAAH
+# ==========================================
+
 class ResumeSerializer(serializers.ModelSerializer):
     mentee_nama = serializers.CharField(source='mentee.nama_lengkap', read_only=True)
     pertemuan_ke = serializers.IntegerField(source='jadwal.pertemuan_ke', read_only=True)
@@ -221,25 +359,44 @@ class ResumeSerializer(serializers.ModelSerializer):
         return None
 
 
-class HafalanSerializer(serializers.ModelSerializer):
+class MutabaahSerializer(serializers.ModelSerializer):
     mentee_nama = serializers.CharField(source='mentee.nama_lengkap', read_only=True)
 
     class Meta:
-        model = Hafalan
+        model = Mutabaah
         fields = '__all__'
 
 
-class KoordinatorSerializer(serializers.ModelSerializer):
+# ==========================================
+# 5. INFORMASI & SERTIFIKAT
+# ==========================================
+
+class InformasiKegiatanSerializer(serializers.ModelSerializer):
+    # Jika kamu menampilkan nama pembuat secara detail, bisa tambahkan read_only serializer di sini
+    
     class Meta:
-        model = Koordinator
-        fields = '__all__'
-
+        model = InformasiKegiatan
+        # ⚠️ GANTI 'deskripsi' MENJADI 'isi' DI SINI
+        fields = [
+            'id', 
+            'judul', 
+            'kategori', 
+            'isi',            # <-- Sudah disesuaikan
+            'tanggal_kegiatan', 
+            'poster', 
+            'dibuat_pada', 
+            'pembuat'
+        ]
 
 class SertifikatSerializer(serializers.ModelSerializer):
     class Meta:
         model = Sertifikat
         fields = '__all__'
 
+
+# ==========================================
+# 6. CUSTOM SERIALIZERS (REKAP DASBOR)
+# ==========================================
 
 class HalaqahRekapSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -248,12 +405,37 @@ class HalaqahRekapSerializer(serializers.Serializer):
     mentor_nama = serializers.CharField(allow_null=True)
     jumlah_mentee = serializers.IntegerField()
     semester = serializers.CharField()
+    
     total_pertemuan = serializers.IntegerField()
     presensi_hadir = serializers.IntegerField()
     presensi_izin = serializers.IntegerField()
     presensi_sakit = serializers.IntegerField()
     presensi_alpha = serializers.IntegerField()
+    
     resume_terkumpul = serializers.IntegerField()
     resume_total = serializers.IntegerField()
-    hafalan_lulus = serializers.IntegerField()
-    hafalan_total = serializers.IntegerField()
+    
+    mutabaah_dinilai = serializers.IntegerField()
+    mutabaah_total = serializers.IntegerField()
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    def validate(self, attrs):
+        username = attrs.get('username')
+        password = attrs.get('password')
+
+        # 1. Cari user di database
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise AuthenticationFailed('Username atau password salah.')
+
+        # 2. Cek apakah passwordnya benar
+        if not user.check_password(password):
+            raise AuthenticationFailed('Username atau password salah.')
+
+        # 3. Jika username & password BENAR, tapi statusnya MATI
+        if not user.is_active:
+            raise AuthenticationFailed('Akun Anda belum aktif. Silakan hubungi admin KMF.')
+
+        # 4. Jika lolos semua, lanjutkan buatin token bawaan
+        return super().validate(attrs)

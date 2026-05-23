@@ -2,17 +2,24 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
+
+# ==========================================
+# 1. MANAJEMEN USER & PROFIL
+# ==========================================
 
 class User(AbstractUser):
     ROLE_CHOICES = (
-        ('ADMIN', 'Admin LPPIK'),
+        ('LPPIK', 'Admin LPPIK'),
         ('KMF', 'Koordinator Mentoring Fakultas'),
         ('MENTOR', 'Mentor'),
         ('MENTEE', 'Mentee'),
     )
 
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='MENTEE')
+    nim = models.CharField(max_length=20, unique=True, null=True, blank=True) 
     foto = models.ImageField(upload_to='uploads/profile/', null=True, blank=True)
     no_hp = models.CharField(max_length=20, blank=True, default='')
 
@@ -47,7 +54,7 @@ class Halaqah(models.Model):
     nama_kelompok = models.CharField(max_length=100)
     tingkat = models.CharField(max_length=20, choices=TINGKAT_CHOICES)
     mentor = models.ForeignKey(
-        Mentor, on_delete=models.SET_NULL, null=True, blank=True, related_name='kelompok_halaqah',
+        Mentor, on_delete=models.SET_NULL, null=True, blank=True, related_name='kelompok_halaqah'
     )
     semester_aktif = models.CharField(max_length=50, default='2025-Ganjil')
 
@@ -58,7 +65,7 @@ class Halaqah(models.Model):
 class Mentee(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='mentee_profile')
     halaqah = models.ForeignKey(
-        Halaqah, on_delete=models.SET_NULL, null=True, blank=True, related_name='anggota_mentee',
+        Halaqah, on_delete=models.SET_NULL, null=True, blank=True, related_name='anggota_mentee'
     )
     nim = models.CharField(max_length=20, unique=True)
     nama_lengkap = models.CharField(max_length=255)
@@ -68,40 +75,96 @@ class Mentee(models.Model):
         return f"{self.nim} - {self.nama_lengkap}"
 
 
+# ==========================================
+# 2. JADWAL & MATERI (GLOBAL OLEH KMF)
+# ==========================================
+
+
+
+
+# ==========================================
+# 2. JADWAL & MATERI (GLOBAL OLEH KMF)
+# ==========================================
+
 class Jadwal(models.Model):
     MAX_PERTEMUAN = 12
-
-    halaqah = models.ForeignKey(Halaqah, on_delete=models.CASCADE, related_name='jadwal_pertemuan')
     semester = models.CharField(max_length=50, default='2025-Ganjil')
     pertemuan_ke = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(12)])
     tanggal = models.DateField(null=True, blank=True)
-    topik = models.CharField(max_length=255, blank=True, default='')
-    kehadiran_mentor = models.BooleanField(default=True)
-    laporan_kegiatan = models.TextField(null=True, blank=True)
+    
+    # HAPUS topik, deskripsi, dan ManyToManyField dari sini.
+    # Biarkan Jadwal murni mengurus "Waktu Pertemuan" saja.
 
     class Meta:
-        unique_together = ('halaqah', 'semester', 'pertemuan_ke')
+        unique_together = ('semester', 'pertemuan_ke')
         ordering = ['semester', 'pertemuan_ke']
 
     def __str__(self):
-        return f"Pertemuan {self.pertemuan_ke} - {self.halaqah.nama_kelompok} ({self.semester})"
+        return f"Pertemuan {self.pertemuan_ke} ({self.semester})"
 
 
 class MateriMentoring(models.Model):
-    TIPE_CHOICES = (
-        ('FILE', 'File / PDF'),
-        ('LINK', 'Tautan'),
-        ('VIDEO', 'Video'),
-    )
-    jadwal = models.OneToOneField(Jadwal, on_delete=models.CASCADE, related_name='materi')
-    judul = models.CharField(max_length=255)
+    # Ubah related_name menjadi 'materi' agar pas ditarik oleh Frontend, namanya langsung cocok
+    jadwal = models.ForeignKey(Jadwal, on_delete=models.CASCADE, related_name='materi')
+    
+    # Sesuaikan dengan nama variabel di Frontend
+    topik = models.CharField(max_length=255)
     deskripsi = models.TextField(blank=True, default='')
-    tipe = models.CharField(max_length=10, choices=TIPE_CHOICES, default='FILE')
+    
     file = models.FileField(upload_to='uploads/materi/', null=True, blank=True)
-    link_url = models.URLField(max_length=500, null=True, blank=True)
+    url = models.URLField(max_length=500, null=True, blank=True) # Ubah dari link_url ke url
 
     def __str__(self):
-        return self.judul
+        return f"{self.topik} - {self.jadwal}"
+
+
+
+class InformasiKegiatan(models.Model):
+    KATEGORI_CHOICES = (
+        ('MENTORING', 'Info Mentoring'),
+        ('CINTA_SUBUH', 'Cinta Subuh'),
+        ('TABLIGH_AKBAR', 'Tabligh Akbar'),
+        ('LAINNYA', 'Lainnya'),
+    )
+    judul = models.CharField(max_length=255)
+    kategori = models.CharField(max_length=20, choices=KATEGORI_CHOICES, default='MENTORING')
+    
+    # Ubah 'deskripsi' menjadi 'isi' agar cocok dengan frontend InformasiForm.jsx
+    isi = models.TextField() 
+    
+    tanggal_kegiatan = models.DateField(null=True, blank=True)
+    poster = models.ImageField(upload_to='uploads/informasi/', null=True, blank=True)
+    dibuat_pada = models.DateTimeField(auto_now_add=True)
+    pembuat = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='informasi_dibuat')
+
+    class Meta:
+        ordering = ['-dibuat_pada']
+
+    def __str__(self):
+        return f"[{self.get_kategori_display()}] {self.judul}"
+
+
+# ==========================================
+# 3. PRESENSI & JURNAL PER HALAQAH
+# ==========================================
+
+class JurnalPertemuan(models.Model):
+    jadwal = models.ForeignKey(Jadwal, on_delete=models.CASCADE, related_name='jurnal_pertemuan')
+    halaqah = models.ForeignKey(Halaqah, on_delete=models.CASCADE, related_name='jurnal_pertemuan')
+    tanggal_pelaksanaan = models.DateField(auto_now_add=True)
+    
+    # Presensi Mentor (KMF yang mengontrol/memantau ini)
+    mentor_hadir = models.BooleanField(default=True)
+    laporan_kegiatan = models.TextField(blank=True, null=True)
+    
+    # Menandakan siapa yang mengisi absen Mentee (Bisa Mentor asli, atau KMF sbg backup)
+    diisi_oleh = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='jurnal_diisi')
+
+    class Meta:
+        unique_together = ('jadwal', 'halaqah')
+
+    def __str__(self):
+        return f"Jurnal {self.halaqah.nama_kelompok} - Pertemuan {self.jadwal.pertemuan_ke}"
 
 
 class Presensi(models.Model):
@@ -111,18 +174,34 @@ class Presensi(models.Model):
         ('SAKIT', 'Sakit'),
         ('ALPHA', 'Alpha'),
     )
-    mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, related_name='presensi_mentee')
-    jadwal = models.ForeignKey(Jadwal, on_delete=models.CASCADE, related_name='presensi_jadwal')
+    
+    # 1. SIAPA YANG ABSEN? (Bisa Mentee, bisa Mentor, jadi dua-duanya boleh kosong/null)
+    mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, null=True, blank=True)
+    mentor = models.ForeignKey(Mentor, on_delete=models.CASCADE, null=True, blank=True) # 👈 TAMBAHAN BARU
+    
+    # 2. ABSEN DI PERTEMUAN MANA?
+    jadwal = models.ForeignKey(Jadwal, on_delete=models.CASCADE, null=True, blank=True) # 👈 TAMBAHAN BARU
+    jurnal = models.ForeignKey(JurnalPertemuan, on_delete=models.CASCADE, null=True, blank=True) # 👈 FIX ERROR FATAL
+    
+    # 3. DETAIL ABSENSI
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ALPHA')
+    catatan = models.TextField(null=True, blank=True) # 👈 TAMBAHAN BARU (Karena frontend kirim 'catatan')
     surat_izin = models.FileField(upload_to='uploads/surat_izin/', null=True, blank=True)
     waktu_input = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        unique_together = ('mentee', 'jadwal')
+    # (Opsional) Aku matikan dulu unique_together biar kamu nggak kena error saat migrasi.
+    # Nanti kalau aplikasinya sudah stabil, bisa diaktifkan lagi.
+    # class Meta:
+    #     unique_together = ('mentee', 'jurnal')
 
     def __str__(self):
-        return f"{self.mentee.nama_lengkap} - {self.status}"
+        # Biar nama di admin panel dinamis (nampilin nama mentor atau mentee)
+        nama = self.mentor.nama_lengkap if self.mentor else (self.mentee.nama_lengkap if self.mentee else "Unknown")
+        return f"{nama} - {self.status}"
 
+# ==========================================
+# 4. PENILAIAN & MUTABAAH
+# ==========================================
 
 class Resume(models.Model):
     mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, related_name='resume_mentee')
@@ -138,18 +217,25 @@ class Resume(models.Model):
         return f"Resume {self.mentee.nama_lengkap} - Pertemuan {self.jadwal.pertemuan_ke}"
 
 
-class Hafalan(models.Model):
-    mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, related_name='hafalan_mentee')
-    nama_surah = models.CharField(max_length=100)
-    ayat_awal = models.IntegerField()
-    ayat_akhir = models.IntegerField()
-    nilai = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
-    is_lulus = models.BooleanField(default=False)
-    catatan_mentor = models.TextField(null=True, blank=True)
+class Mutabaah(models.Model):
+    # Menggantikan model Hafalan agar fleksibel untuk Takhasus, Tahsin, dan Tahfidz
+    mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, related_name='mutabaah_mentee')
     tanggal = models.DateField(default=timezone.now)
+    
+    # Bisa diisi "Al-Baqarah" (untuk Tahfidz/Tahsin) atau "Iqro Jilid 4" (untuk Takhasus)
+    materi_bacaan = models.CharField(max_length=150, help_text="Contoh: Al-Baqarah / Iqro Jilid 4")
+    
+    # Bisa diisi "Ayat 1-10" atau "Halaman 15"
+    rentang_bacaan = models.CharField(max_length=100, help_text="Contoh: Ayat 1-10 / Halaman 15")
+    
+    nilai = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
+    catatan_mentor = models.TextField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.mentee.nama_lengkap} - {self.nama_surah}"
+        return f"Mutabaah {self.mentee.nama_lengkap} - {self.materi_bacaan}"
+
+
+
 
 
 class Sertifikat(models.Model):
@@ -161,3 +247,33 @@ class Sertifikat(models.Model):
 
     def __str__(self):
         return f"Sertifikat {self.sebagai} - {self.user.username}"
+    
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        # 1. Gabungkan first_name dan last_name dari AbstractUser
+        nama_gabungan = f"{instance.first_name} {instance.last_name}".strip()
+        # Kalau namanya kosong melompong, pakai username (NIM) sebagai gantinya
+        if not nama_gabungan:
+            nama_gabungan = instance.username
+
+        if instance.role == 'MENTOR':
+            # Mentor TIDAK ADA field 'nim', tapi wajib isi 'nama_lengkap'
+            Mentor.objects.get_or_create(
+                user=instance,
+                defaults={
+                    'nama_lengkap': nama_gabungan,
+                    'no_hp': instance.no_hp
+                }
+            )
+        elif instance.role == 'MENTEE':
+            # Mentee butuh 'nim', 'nama_lengkap', dan 'prodi'
+            Mentee.objects.get_or_create(
+                user=instance,
+                defaults={
+                    'nim': instance.nim,
+                    'nama_lengkap': nama_gabungan,
+                    'prodi': '-'  # Diisi strip dulu, nanti KMF bisa edit
+                }
+            )

@@ -1,37 +1,30 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-
 from .views import (
-    AnalyticsOverviewView,
-    HafalanViewSet,
-    HalaqahViewSet,
-    JadwalViewSet,
-    KoordinatorViewSet,
-    MateriMentoringViewSet,
-    MenteeViewSet,
-    MentorViewSet,
-    PresensiViewSet,
-    RekapHalaqahView,
-    ResumeViewSet,
-    SertifikatViewSet,
-    UserViewSet,
+    UserViewSet, MentorViewSet, MenteeViewSet, HalaqahViewSet,
+    JadwalViewSet, JurnalPertemuanViewSet,
+    PresensiViewSet, ResumeViewSet, MutabaahViewSet, 
+    InformasiKegiatanViewSet, SertifikatViewSet, TambahUserKMFView
 )
 
+# Menggunakan DefaultRouter dari DRF untuk membuat rute otomatis (GET, POST, PUT, DELETE)
 router = DefaultRouter()
-router.register(r'halaqah', HalaqahViewSet)
-router.register(r'mentee', MenteeViewSet)
-router.register(r'hafalan', HafalanViewSet)
-router.register(r'jadwal', JadwalViewSet)
-router.register(r'materi', MateriMentoringViewSet)
-router.register(r'koordinator', KoordinatorViewSet)
-router.register(r'user', UserViewSet)
-router.register(r'mentor', MentorViewSet)
-router.register(r'presensi', PresensiViewSet)
-router.register(r'resume', ResumeViewSet)
-router.register(r'sertifikat', SertifikatViewSet)
+router.register(r'users', UserViewSet, basename='user')
+router.register(r'mentors', MentorViewSet, basename='mentor')
+router.register(r'mentees', MenteeViewSet, basename='mentee')
+router.register(r'halaqah', HalaqahViewSet, basename='halaqah')
+router.register(r'jadwal', JadwalViewSet, basename='jadwal')
+router.register(r'jurnal', JurnalPertemuanViewSet, basename='jurnal')
+router.register(r'presensi', PresensiViewSet, basename='presensi')
+router.register(r'resume', ResumeViewSet, basename='resume')
+router.register(r'mutabaah', MutabaahViewSet, basename='mutabaah')
+router.register(r'informasi', InformasiKegiatanViewSet, basename='informasi')
+router.register(r'sertifikat', SertifikatViewSet, basename='sertifikat')
 
 urlpatterns = [
+    # Router utama
     path('', include(router.urls)),
-    path('rekap/halaqah/', RekapHalaqahView.as_view(), name='rekap-halaqah'),
-    path('analytics/overview/', AnalyticsOverviewView.as_view(), name='analytics-overview'),
+    
+    # Endpoint khusus untuk KMF menambah user via form manual
+    path('kmf/tambah-user/', TambahUserKMFView.as_view(), name='kmf-tambah-user'),
 ]

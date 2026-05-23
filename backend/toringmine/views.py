@@ -1,431 +1,282 @@
-from django.db.models import Count, Q
-from rest_framework import status, viewsets
-from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied, ValidationError
-from rest_framework.permissions import IsAuthenticated
+import re
+from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import action
+from django.db.models import Q
 
 from .models import (
-    Hafalan,
-    Halaqah,
-    Jadwal,
-    Koordinator,
-    MateriMentoring,
-    Mentee,
-    Mentor,
-    Presensi,
-    Resume,
-    Sertifikat,
-    User,
-)
-from .permissions import (
-    IsAdminSertifikatWrite,
-    IsJadwalWrite,
-    IsKMFMateriWrite,
-    IsKMFWrite,
-    IsMentorHafalanWrite,
-    IsMentorPresensiWrite,
-    IsOwnProfileOrKMF,
-    IsResumePermission,
+    User, Koordinator, Mentor, Halaqah, Mentee, 
+    Jadwal, MateriMentoring, JurnalPertemuan, Presensi, 
+    Resume, Mutabaah, InformasiKegiatan, Sertifikat
 )
 from .serializers import (
-    HafalanSerializer,
-    HalaqahRekapSerializer,
-    HalaqahSerializer,
-    JadwalSerializer,
-    KoordinatorSerializer,
-    MateriMentoringSerializer,
-    MenteeSerializer,
-    MentorSerializer,
-    PresensiSerializer,
-    ResumeSerializer,
-    SertifikatSerializer,
-    UserSerializer,
+    UserSerializer, KoordinatorSerializer, MentorSerializer, 
+    HalaqahSerializer, MenteeSerializer, JadwalSerializer, 
+    MateriMentoringSerializer, JurnalPertemuanSerializer, 
+    PresensiSerializer, ResumeSerializer, MutabaahSerializer, 
+    InformasiKegiatanSerializer, SertifikatSerializer, 
+    AddUserByKMFSerializer, HalaqahRekapSerializer
 )
 
+# ==========================================
+# CUSTOM PERMISSIONS (SISTEM KEAMANAN ROLE)
+# ==========================================
 
-def user_role(user):
-    return getattr(user, 'role', None)
+class LppikReadOnlyPermission(permissions.BasePermission):
+    """Mencegah Admin LPPIK melakukan aksi CRUD (Hanya boleh Read/Melihat)"""
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.role == 'ADMIN' and request.method not in permissions.SAFE_METHODS:
+            return False
+        return True
 
+# ==========================================
+# 1. VIEWS MANAJEMEN USER (KHUSUS KMF)
+# ==========================================
 
-def is_monitoring(user):
-    return user_role(user) in ('ADMIN', 'KMF')
+class TambahUserKMFView(APIView):
+    """Endpoint khusus untuk KMF menambah User secara manual"""
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
 
-
-def mentor_halaqah_qs(user):
-    return Q(halaqah__mentor__user=user)
-
-
-def mentor_owns_mentee(user, mentee):
-    if not hasattr(user, 'mentor_profile'):
-        return False
-    return mentee.halaqah_id and mentee.halaqah.mentor_id == user.mentor_profile.id
-
-
-def mentor_owns_presensi(user, presensi):
-    return mentor_owns_mentee(user, presensi.mentee)
-
-
-class ScopedQuerysetMixin:
-    mentor_lookup = 'halaqah__mentor__user'
-    mentee_lookup = 'user'
-
-    def get_mentee_queryset(self, qs):
-        user = self.request.user
-        if is_monitoring(user):
-            return qs
-        if hasattr(user, 'mentor_profile'):
-            return qs.filter(**{self.mentor_lookup: user})
-        if hasattr(user, 'mentee_profile'):
-            return qs.filter(mentee__user=user)
-        return qs.none()
-
-    def get_halaqah_queryset(self, qs):
-        user = self.request.user
-        if is_monitoring(user):
-            return qs
-        if hasattr(user, 'mentor_profile'):
-            return qs.filter(mentor__user=user)
-        if hasattr(user, 'mentee_profile'):
-            return qs.filter(anggota_mentee__user=user).distinct()
-        return qs.none()
-
-
-class HalaqahViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Halaqah.objects.select_related('mentor').all()
-    serializer_class = HalaqahSerializer
-    permission_classes = [IsAuthenticated, IsKMFWrite]
-
-    def get_queryset(self):
-        return self.get_halaqah_queryset(super().get_queryset())
-
-    @action(detail=True, methods=['post'], url_path='init-semester')
-    def init_semester(self, request, pk=None):
-        if user_role(request.user) != 'KMF':
-            raise PermissionDenied('Hanya KMF yang dapat membuat lembar semester.')
-        halaqah = self.get_object()
-        semester = request.data.get('semester') or halaqah.semester_aktif
-        if Jadwal.objects.filter(halaqah=halaqah, semester=semester).exists():
-            raise ValidationError({'semester': 'Lembar semester ini sudah ada.'})
-        created = []
-        for i in range(1, Jadwal.MAX_PERTEMUAN + 1):
-            j, _ = Jadwal.objects.get_or_create(
-                halaqah=halaqah,
-                semester=semester,
-                pertemuan_ke=i,
-                defaults={'topik': f'Pertemuan {i}'},
-            )
-            created.append(j)
-            for mentee in halaqah.anggota_mentee.all():
-                Presensi.objects.get_or_create(mentee=mentee, jadwal=j, defaults={'status': 'ALPHA'})
-        halaqah.semester_aktif = semester
-        halaqah.save(update_fields=['semester_aktif'])
-        return Response(JadwalSerializer(created, many=True, context={'request': request}).data)
-
-
-class MenteeViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Mentee.objects.select_related('halaqah', 'user').all()
-    serializer_class = MenteeSerializer
-    permission_classes = [IsAuthenticated, IsKMFWrite]
-
-    def get_queryset(self):
-        return self.get_mentee_queryset(super().get_queryset())
-
-
-class MentorViewSet(viewsets.ModelViewSet):
-    queryset = Mentor.objects.select_related('user').all()
-    serializer_class = MentorSerializer
-    permission_classes = [IsAuthenticated, IsKMFWrite]
-
-
-class JadwalViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Jadwal.objects.select_related('halaqah').prefetch_related('materi').all()
-    serializer_class = JadwalSerializer
-    permission_classes = [IsAuthenticated, IsJadwalWrite]
-
-    def get_queryset(self):
-        user = self.request.user
-        qs = super().get_queryset()
-        if is_monitoring(user):
-            return qs
-        if hasattr(user, 'mentor_profile'):
-            return qs.filter(halaqah__mentor__user=user)
-        if hasattr(user, 'mentee_profile'):
-            return qs.filter(halaqah__anggota_mentee__user=user).distinct()
-        return qs.none()
-
-    def perform_create(self, serializer):
-        if user_role(self.request.user) != 'KMF':
-            raise PermissionDenied('Hanya KMF yang dapat membuat jadwal.')
-        serializer.save()
-
-    def perform_update(self, serializer):
-        user = self.request.user
-        role = user_role(user)
-        if role == 'KMF':
+    def post(self, request):
+        if request.user.role != 'KMF':
+            return Response({"detail": "Hanya KMF yang bisa menambah user manual."}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = AddUserByKMFSerializer(data=request.data)
+        if serializer.is_valid():
             serializer.save()
-            return
-        if role == 'MENTOR':
-            allowed = {'kehadiran_mentor', 'laporan_kegiatan'}
-            instance = serializer.instance
-            if not hasattr(user, 'mentor_profile') or instance.halaqah.mentor_id != user.mentor_profile.id:
-                raise PermissionDenied()
-            data = {k: v for k, v in serializer.validated_data.items() if k in allowed}
-            for k, v in data.items():
-                setattr(instance, k, v)
-            instance.save()
-            return
-        raise PermissionDenied()
-
-    def perform_destroy(self, instance):
-        if user_role(self.request.user) != 'KMF':
-            raise PermissionDenied()
-        instance.delete()
-
-
-class MateriMentoringViewSet(viewsets.ModelViewSet):
-    queryset = MateriMentoring.objects.select_related('jadwal__halaqah').all()
-    serializer_class = MateriMentoringSerializer
-    permission_classes = [IsAuthenticated, IsKMFMateriWrite]
-
-    def get_queryset(self):
-        user = self.request.user
-        qs = super().get_queryset()
-        if is_monitoring(user):
-            return qs
-        if hasattr(user, 'mentor_profile'):
-            return qs.filter(jadwal__halaqah__mentor__user=user)
-        if hasattr(user, 'mentee_profile'):
-            return qs.filter(jadwal__halaqah__anggota_mentee__user=user).distinct()
-        return qs.none()
-
-
-class PresensiViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Presensi.objects.select_related('mentee', 'jadwal').all()
-    serializer_class = PresensiSerializer
-    permission_classes = [IsAuthenticated, IsMentorPresensiWrite]
-    mentor_lookup = 'mentee__halaqah__mentor__user'
-
-    def get_queryset(self):
-        return self.get_mentee_queryset(super().get_queryset())
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user_role(user) != 'MENTOR':
-            raise PermissionDenied()
-        mentee = serializer.validated_data.get('mentee')
-        if mentee and not mentor_owns_mentee(user, mentee):
-            raise PermissionDenied('Mentee tidak berada di halaqah Anda.')
-        serializer.save()
-
-    def perform_update(self, serializer):
-        user = self.request.user
-        if user_role(user) != 'MENTOR':
-            raise PermissionDenied()
-        if not mentor_owns_presensi(user, serializer.instance):
-            raise PermissionDenied('Presensi tidak berada di halaqah Anda.')
-        serializer.save()
-
-
-class ResumeViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Resume.objects.select_related('mentee', 'jadwal').all()
-    serializer_class = ResumeSerializer
-    permission_classes = [IsAuthenticated, IsResumePermission]
-    mentor_lookup = 'mentee__halaqah__mentor__user'
-
-    def get_queryset(self):
-        return self.get_mentee_queryset(super().get_queryset())
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user_role(user) == 'MENTEE' and hasattr(user, 'mentee_profile'):
-            serializer.save(mentee=user.mentee_profile)
-        else:
-            raise PermissionDenied('Hanya mentee yang dapat mengunggah resume.')
-
-    def perform_update(self, serializer):
-        user = self.request.user
-        instance = serializer.instance
-        role = user_role(user)
-        if role == 'MENTEE':
-            if not hasattr(user, 'mentee_profile') or instance.mentee_id != user.mentee_profile.id:
-                raise PermissionDenied('Anda hanya dapat mengubah resume milik sendiri.')
-            allowed = {'file', 'jadwal'}
-            data = {k: v for k, v in serializer.validated_data.items() if k in allowed}
-            for k, v in data.items():
-                setattr(instance, k, v)
-            instance.save()
-            return
-        if role == 'MENTOR':
-            data = {k: v for k, v in serializer.validated_data.items() if k in ('nilai', 'catatan_mentor')}
-            for k, v in data.items():
-                setattr(instance, k, v)
-            instance.save()
-            return
-        raise PermissionDenied()
-
-    def perform_destroy(self, instance):
-        user = self.request.user
-        if user_role(user) == 'MENTEE' and hasattr(user, 'mentee_profile'):
-            if instance.mentee_id != user.mentee_profile.id:
-                raise PermissionDenied()
-            instance.delete()
-            return
-        raise PermissionDenied('Hanya mentee yang dapat menghapus resume sendiri.')
-
-
-class HafalanViewSet(ScopedQuerysetMixin, viewsets.ModelViewSet):
-    queryset = Hafalan.objects.select_related('mentee').all()
-    serializer_class = HafalanSerializer
-    permission_classes = [IsAuthenticated, IsMentorHafalanWrite]
-    mentor_lookup = 'mentee__halaqah__mentor__user'
-
-    def get_queryset(self):
-        return self.get_mentee_queryset(super().get_queryset())
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        if user_role(user) != 'MENTOR':
-            raise PermissionDenied()
-        mentee = serializer.validated_data.get('mentee')
-        if mentee and not mentor_owns_mentee(user, mentee):
-            raise PermissionDenied('Mentee tidak berada di halaqah Anda.')
-        serializer.save()
-
-    def perform_update(self, serializer):
-        user = self.request.user
-        if user_role(user) != 'MENTOR':
-            raise PermissionDenied()
-        if not mentor_owns_mentee(user, serializer.instance.mentee):
-            raise PermissionDenied()
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        user = self.request.user
-        if user_role(user) != 'MENTOR':
-            raise PermissionDenied()
-        if not mentor_owns_mentee(user, instance.mentee):
-            raise PermissionDenied()
-        instance.delete()
-
-
-class SertifikatViewSet(viewsets.ModelViewSet):
-    queryset = Sertifikat.objects.select_related('user').all()
-    serializer_class = SertifikatSerializer
-    permission_classes = [IsAuthenticated, IsAdminSertifikatWrite]
-
-    def get_queryset(self):
-        user = self.request.user
-        if user_role(user) in ('ADMIN', 'KMF'):
-            return Sertifikat.objects.all()
-        return Sertifikat.objects.filter(user=user)
-
-
-class KoordinatorViewSet(viewsets.ModelViewSet):
-    queryset = Koordinator.objects.all()
-    serializer_class = KoordinatorSerializer
-    permission_classes = [IsAuthenticated, IsKMFWrite]
-
+            return Response({"message": "User dan Profil berhasil dibuat!"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
 
-    def get_permissions(self):
-        if self.action in ('retrieve', 'update', 'partial_update') and self.kwargs.get('pk') == str(self.request.user.id):
-            return [IsAuthenticated(), IsOwnProfileOrKMF()]
-        if self.action in ('me',):
-            return [IsAuthenticated()]
-        return [IsAuthenticated(), IsKMFWrite()]
-
-    @action(detail=False, methods=['get', 'patch'], url_path='me')
+    @action(detail=False, methods=['get', 'patch'])
     def me(self, request):
         if request.method == 'GET':
-            return Response(UserSerializer(request.user, context={'request': request}).data)
-        serializer = UserSerializer(
-            request.user, data=request.data, partial=True, context={'request': request},
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+        elif request.method == 'PATCH':
+            serializer = self.get_serializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+
+class MentorViewSet(viewsets.ModelViewSet):
+    queryset = Mentor.objects.all()
+    serializer_class = MentorSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+    def perform_destroy(self, instance):
+        user = instance.user  # Tangkap data akun login-nya dulu
+        instance.delete()     # Hapus profil Mentor-nya
+        if user:
+            user.delete()
+
+class MenteeViewSet(viewsets.ModelViewSet):
+    queryset = Mentee.objects.all()
+    serializer_class = MenteeSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+    def perform_destroy(self, instance):
+        user = instance.user  # Tangkap data akun login-nya dulu
+        instance.delete()     # Hapus profil Mentor-nya
+        if user:
+            user.delete()
+
+class HalaqahViewSet(viewsets.ModelViewSet):
+    queryset = Halaqah.objects.all()
+    serializer_class = HalaqahSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+# ==========================================
+# 2. VIEWS JADWAL & MATERI GLOBAL
+# ==========================================
+
+class JadwalViewSet(viewsets.ModelViewSet):
+    queryset = Jadwal.objects.all()
+    serializer_class = JadwalSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def create(self, request, *args, **kwargs):
+        # --- PASANG CCTV DI SINI ---
+        print("\n" + "="*40)
+        print("🔍 ISI DATA TEKS DARI REACT:")
+        print(request.data)
+        print("-" * 40)
+        print("📁 ISI DATA FILE DARI REACT:")
+        print(request.FILES)
+        print("="*40 + "\n")
+        # ---------------------------
+
+        pertemuan_ke = request.data.get('pertemuan_ke')
+       
+
+    def create(self, request, *args, **kwargs):
+        pertemuan_ke = request.data.get('pertemuan_ke')
+        tanggal = request.data.get('tanggal')
+        semester = request.data.get('semester', '2025-Ganjil')
+
+        jadwal = Jadwal.objects.create(
+            pertemuan_ke=pertemuan_ke,
+            tanggal=tanggal,
+            semester=semester
         )
-        serializer.is_valid(raise_exception=True)
-        password = request.data.get('password')
-        user = serializer.save()
-        if password:
-            user.set_password(password)
-            user.save()
-        return Response(UserSerializer(user, context={'request': request}).data)
 
+        materi_dict = {}
+        for key, value in request.data.items():
+            match = re.match(r'materi\[(\d+)\]\[(\w+)\]', key)
+            if match:
+                index = match.group(1)
+                field = match.group(2)
+                if index not in materi_dict:
+                    materi_dict[index] = {}
+                materi_dict[index][field] = value
 
-class RekapHalaqahView(APIView):
-    permission_classes = [IsAuthenticated]
+        for key, file_obj in request.FILES.items():
+            match = re.match(r'materi\[(\d+)\]\[file\]', key)
+            if match:
+                index = match.group(1)
+                if index not in materi_dict:
+                    materi_dict[index] = {}
+                materi_dict[index]['file'] = file_obj
 
-    def get(self, request):
-        if user_role(request.user) not in ('ADMIN', 'KMF', 'MENTOR'):
-            return Response({'detail': 'Akses ditolak.'}, status=status.HTTP_403_FORBIDDEN)
-
-        qs = Halaqah.objects.select_related('mentor').annotate(
-            jumlah_mentee=Count('anggota_mentee', distinct=True),
-        )
-        if hasattr(request.user, 'mentor_profile'):
-            qs = qs.filter(mentor__user=request.user)
-
-        semester = request.query_params.get('semester')
-        data = []
-        for h in qs:
-            sem = semester or h.semester_aktif
-            jadwal_ids = list(
-                Jadwal.objects.filter(halaqah=h, semester=sem).values_list('id', flat=True),
+        for index, data in materi_dict.items():
+            MateriMentoring.objects.create(
+                jadwal=jadwal,
+                topik=data.get('topik', ''),
+                deskripsi=data.get('deskripsi', ''),
+                url=data.get('url', None) or None,
+                file=data.get('file', None)
             )
-            mentee_ids = list(h.anggota_mentee.values_list('id', flat=True))
-            presensi = Presensi.objects.filter(jadwal_id__in=jadwal_ids, mentee_id__in=mentee_ids)
-            agg = presensi.values('status').annotate(c=Count('id'))
-            counts = {row['status']: row['c'] for row in agg}
-            resume_qs = Resume.objects.filter(jadwal_id__in=jadwal_ids, mentee_id__in=mentee_ids)
-            resume_total = len(mentee_ids) * max(len(jadwal_ids), 1) if mentee_ids else 0
-            resume_done = resume_qs.exclude(file='').exclude(file__isnull=True).count()
-            hafalan_qs = Hafalan.objects.filter(mentee_id__in=mentee_ids)
-            data.append({
-                'id': h.id,
-                'nama_kelompok': h.nama_kelompok,
-                'tingkat': h.tingkat,
-                'mentor_nama': h.mentor.nama_lengkap if h.mentor else None,
-                'jumlah_mentee': h.jumlah_mentee,
-                'semester': sem,
-                'total_pertemuan': len(jadwal_ids),
-                'presensi_hadir': counts.get('HADIR', 0),
-                'presensi_izin': counts.get('IZIN', 0),
-                'presensi_sakit': counts.get('SAKIT', 0),
-                'presensi_alpha': counts.get('ALPHA', 0),
-                'resume_terkumpul': resume_done,
-                'resume_total': resume_total,
-                'hafalan_lulus': hafalan_qs.filter(is_lulus=True).count(),
-                'hafalan_total': hafalan_qs.count(),
-            })
-        return Response(HalaqahRekapSerializer(data, many=True).data)
+
+        serializer = self.get_serializer(jadwal)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        
+        instance.pertemuan_ke = request.data.get('pertemuan_ke', instance.pertemuan_ke)
+        instance.tanggal = request.data.get('tanggal', instance.tanggal)
+        instance.save()
+
+        materi_dict = {}
+        for key, value in request.data.items():
+            match = re.match(r'materi\[(\d+)\]\[(\w+)\]', key)
+            if match:
+                index = match.group(1)
+                field = match.group(2)
+                if index not in materi_dict:
+                    materi_dict[index] = {}
+                materi_dict[index][field] = value
+
+        for key, file_obj in request.FILES.items():
+            match = re.match(r'materi\[(\d+)\]\[file\]', key)
+            if match:
+                index = match.group(1)
+                if index not in materi_dict:
+                    materi_dict[index] = {}
+                materi_dict[index]['file'] = file_obj
+
+        if materi_dict:
+            instance.materi.all().delete() 
+            for index, data in materi_dict.items():
+                MateriMentoring.objects.create(
+                    jadwal=instance,
+                    topik=data.get('topik', ''),
+                    deskripsi=data.get('deskripsi', ''),
+                    url=data.get('url', None) or None,
+                    file=data.get('file', None)
+                )
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
-class AnalyticsOverviewView(APIView):
-    permission_classes = [IsAuthenticated]
+# ==========================================
+# 3. VIEWS PRESENSI & JURNAL (DENGAN FILTER ROLE)
+# ==========================================
 
-    def get(self, request):
-        role = user_role(request.user)
-        if role == 'MENTEE':
-            return Response({'detail': 'Akses ditolak.'}, status=status.HTTP_403_FORBIDDEN)
+class JurnalPertemuanViewSet(viewsets.ModelViewSet):
+    serializer_class = JurnalPertemuanSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
 
-        halaqah_qs = Halaqah.objects.all()
-        mentee_qs = Mentee.objects.all()
-        if hasattr(request.user, 'mentor_profile'):
-            halaqah_qs = halaqah_qs.filter(mentor__user=request.user)
-            mentee_qs = mentee_qs.filter(halaqah__mentor__user=request.user)
-        presensi = Presensi.objects.filter(mentee__in=mentee_qs)
-        agg = presensi.values('status').annotate(c=Count('id'))
-        counts = {row['status']: row['c'] for row in agg}
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'MENTOR':
+            return JurnalPertemuan.objects.filter(halaqah__mentor__user=user)
+        return JurnalPertemuan.objects.all()
 
-        return Response({
-            'role': role,
-            'total_halaqah': halaqah_qs.count(),
-            'total_mentee': mentee_qs.count(),
-            'total_mentor': Mentor.objects.count() if role in ('ADMIN', 'KMF') else 1,
-            'presensi': counts,
-            'total_resume': Resume.objects.filter(mentee__in=mentee_qs).exclude(file='').exclude(file__isnull=True).count(),
-            'total_hafalan': Hafalan.objects.filter(mentee__in=mentee_qs).count(),
-        })
+    def perform_create(self, serializer):
+        serializer.save(diisi_oleh=self.request.user)
+
+class PresensiViewSet(viewsets.ModelViewSet):
+    serializer_class = PresensiSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'MENTOR':
+            return Presensi.objects.filter(mentee__halaqah__mentor__user=user)
+        elif user.role == 'MENTEE':
+            return Presensi.objects.filter(mentee__user=user)
+        return Presensi.objects.all()
+
+# ==========================================
+# 4. VIEWS MUTABAAH & RESUME
+# ==========================================
+
+class MutabaahViewSet(viewsets.ModelViewSet):
+    serializer_class = MutabaahSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'MENTOR':
+            return Mutabaah.objects.filter(mentee__halaqah__mentor__user=user)
+        elif user.role == 'MENTEE':
+            return Mutabaah.objects.filter(mentee__user=user)
+        return Mutabaah.objects.all()
+
+class ResumeViewSet(viewsets.ModelViewSet):
+    serializer_class = ResumeSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'MENTOR':
+            return Resume.objects.filter(mentee__halaqah__mentor__user=user)
+        elif user.role == 'MENTEE':
+            return Resume.objects.filter(mentee__user=user)
+        return Resume.objects.all()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role == 'MENTEE' and hasattr(user, 'mentee_profile'):
+            serializer.save(mentee=user.mentee_profile)
+        else:
+            serializer.save()
+
+# ==========================================
+# 5. VIEWS INFORMASI & SERTIFIKAT
+# ==========================================
+
+class InformasiKegiatanViewSet(viewsets.ModelViewSet):
+    queryset = InformasiKegiatan.objects.all()
+    serializer_class = InformasiKegiatanSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def perform_create(self, serializer):
+        serializer.save(pembuat=self.request.user)
+
+class SertifikatViewSet(viewsets.ModelViewSet):
+    serializer_class = SertifikatSerializer
+    permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['MENTEE', 'MENTOR']:
+            return Sertifikat.objects.filter(user=user)
+        return Sertifikat.objects.all()

@@ -1,19 +1,19 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { canAccessRoute } from '../../utils/roleHelpers'
 
-export default function RoleProtectedRoute({ children, path, roles }) {
-  const location = useLocation()
+export default function RoleProtectedRoute({ allowedRoles }) {
   const user = useAuthStore((s) => s.user)
-  const checkPath = path || location.pathname
 
-  if (roles?.length && user && !roles.includes(user.role)) {
+  // Kalau belum login, lempar ke login
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  // Kalau role-nya tidak diizinkan, lempar ke forbidden
+  if (!allowedRoles.includes(user.role)) {
     return <Navigate to="/forbidden" replace />
   }
 
-  if (!canAccessRoute(user, checkPath)) {
-    return <Navigate to="/forbidden" replace />
-  }
-
-  return children
+  // JIKA AMAN, TAMPILKAN ISI HALAMANNYA (Ini yang bikin layarmu nggak blank lagi!)
+  return <Outlet />
 }

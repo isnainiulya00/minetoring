@@ -1,4 +1,14 @@
-export const API_BASE_URL = 'http://127.0.0.1:8000'
+// ===============================
+// API
+// ===============================
+
+export const API_BASE_URL =
+  'http://127.0.0.1:8000'
+
+
+// ===============================
+// USER ROLES
+// ===============================
 
 export const ROLES = {
   ADMIN: 'ADMIN',
@@ -14,18 +24,48 @@ export const ROLE_LABELS = {
   MENTEE: 'Mentee',
 }
 
+
+// ===============================
+// PRESENSI
+// ===============================
+
 export const PRESENSI_STATUS = {
-  HADIR: { label: 'Hadir', variant: 'success' },
-  IZIN: { label: 'Izin', variant: 'warning' },
-  SAKIT: { label: 'Sakit', variant: 'info' },
-  ALPHA: { label: 'Alpha', variant: 'danger' },
+  HADIR: {
+    label: 'Hadir',
+    variant: 'success',
+  },
+
+  IZIN: {
+    label: 'Izin',
+    variant: 'warning',
+  },
+
+  SAKIT: {
+    label: 'Sakit',
+    variant: 'info',
+  },
+
+  ALPHA: {
+    label: 'Alpha',
+    variant: 'danger',
+  },
 }
 
-export const TINGKAT_HALAQAH = {
+
+// ===============================
+// HALAQAH
+// ===============================
+
+export const HALAQAH_LEVELS = {
   TAKHASUS: 'Takhasus',
   TAHSIN: 'Tahsin',
   TAHFIDZ: 'Tahfidz',
 }
+
+
+// ===============================
+// LOCAL STORAGE
+// ===============================
 
 export const STORAGE_KEYS = {
   ACCESS: 'mine_toring_access',

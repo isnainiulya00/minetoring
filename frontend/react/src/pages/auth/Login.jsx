@@ -2,30 +2,57 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { HiOutlineLockClosed, HiOutlineUser } from 'react-icons/hi2'
+import { HiOutlineLockClosed } from 'react-icons/hi2'
 import { useAuthStore } from '../../store/authStore'
 import { getLoginRedirectPath } from '../../utils/roleHelpers'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 
 export default function Login() {
+  // 1. State Management
+  const [errorMsg, setErrorMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ username: '', password: '' })
+  
+  // 2. Hooks Setup
   const navigate = useNavigate()
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
-  const isLoading = useAuthStore((s) => s.isLoading)
 
-  const [form, setForm] = useState({ username: '', password: '' })
-
+  // 3. Fungsi Submit
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setErrorMsg('') 
+    setLoading(true)
+
     try {
       const result = await login(form.username, form.password)
+      
       toast.success('Selamat datang kembali!')
+      
       const from = location.state?.from?.pathname || getLoginRedirectPath(result?.user)
       navigate(from, { replace: true })
-    } catch (err) {
-      const msg = err.response?.data?.detail || 'Username atau password salah'
-      toast.error(msg)
+      
+    } catch (error) {
+      // 👇 LOGIKA TANGKAP ERROR BERADA DI SINI (Di dalam fungsi JS)
+      if (error.response) {
+        const status = error.response.status
+        
+        if (status === 401) {
+          // Cetak pesan jujur dari Django (Entah itu salah password / belum aktif)
+          setErrorMsg(error.response.data?.detail || 'Username atau password salah.')
+        } else if (status === 404) {
+          setErrorMsg('Sistem tidak merespon (Endpoint tidak ditemukan).')
+        } else if (status === 500) {
+          setErrorMsg('Terjadi kesalahan di server internal Django.')
+        } else {
+          setErrorMsg(error.response.data?.detail || 'Gagal masuk. Silakan coba lagi.')
+        }
+      } else {
+        setErrorMsg('Tidak dapat terhubung ke server. Periksa koneksi internet.')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -45,14 +72,26 @@ export default function Login() {
 
       <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
         <h2 className="font-display text-xl font-semibold text-gray-900">Masuk</h2>
-        <p className="mt-1 text-sm text-gray-500">Gunakan kredensial akun Anda</p>
+        <p className="mt-1 mb-6 text-sm text-gray-500">Gunakan kredensial akun Anda</p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        {/* 👇 KOTAK ERROR MERAH (Bentuknya Elemen UI HTML/JSX) 👇 */}
+        {errorMsg && (
+          <div className="mb-4 rounded-lg bg-red-50 p-4 border border-red-200">
+            <div className="flex items-center gap-3">
+              <svg className="h-5 w-5 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm font-medium text-red-800">{errorMsg}</p>
+            </div>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Input
             label="Username"
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="username"
+            placeholder="NIM atau username"
             required
             autoComplete="username"
           />
@@ -65,9 +104,9 @@ export default function Login() {
             required
             autoComplete="current-password"
           />
-          <Button type="submit" className="w-full" loading={isLoading}>
+          <Button type="submit" className="w-full" loading={loading}>
             <HiOutlineLockClosed className="h-4 w-4" />
-            Masuk
+            {loading ? 'Memeriksa...' : 'Masuk'}
           </Button>
         </form>
       </div>

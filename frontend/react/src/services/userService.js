@@ -1,20 +1,39 @@
 import api from '../api/axios'
 
 export const userService = {
-  getAll: () => api.get('/api/user/').then((r) => r.data),
-  getById: (id) => api.get(`/api/user/${id}/`).then((r) => r.data),
-  create: (payload) =>
-    api
-      .post('/api/user/', {
-        username: payload.username,
-        password: payload.password,
-        email: payload.email || '',
-        first_name: payload.first_name || '',
-        last_name: payload.last_name || '',
-        role: payload.role,
-        is_active: payload.is_active !== false,
-      })
-      .then((r) => r.data),
-  update: (id, payload) => api.patch(`/api/user/${id}/`, payload).then((r) => r.data),
-  delete: (id) => api.delete(`/api/user/${id}/`),
+  getAll: async () => {
+    const { data } = await api.get('/api/users/')
+    return data
+  },
+
+  getById: async (id) => {
+    const { data } = await api.get(`/api/users/${id}/`)
+    return data
+  },
+
+  createCustom: async (payload) => {
+    const { data } = await api.post(
+      '/api/kmf/tambah-user/',
+      payload
+    )
+
+    return data
+  },
+
+  update: async (id, payload) => {
+    const { data } = await api.patch(
+      `/api/users/${id}/`,
+      payload
+    )
+
+    return data
+  },
+
+  delete: async (id) => {
+    const { data } = await api.delete(
+      `/api/users/${id}/`
+    )
+
+    return data
+  },
 }

@@ -16,10 +16,7 @@ import { halaqahService } from '../../services/halaqahService'
 import { mentorService } from '../../services/mentorService'
 import { useAuthStore } from '../../store/authStore'
 import { canManageHalaqah } from '../../utils/roleHelpers'
-import { TINGKAT_HALAQAH } from '../../utils/constants'
 import toast from 'react-hot-toast'
-
-const TINGKAT_OPTIONS = Object.keys(TINGKAT_HALAQAH)
 
 export default function HalaqahList() {
   const user = useAuthStore((s) => s.user)
@@ -30,9 +27,10 @@ export default function HalaqahList() {
   const { data: mentors } = useApi(mentorService.getAll, [])
 
   const [modalOpen, setModalOpen] = useState(false)
+  
+  // Hapus properti 'tingkat' dari form awal
   const [form, setForm] = useState({
     nama_kelompok: '',
-    tingkat: 'TAHFIDZ',
     mentor: '',
     semester_aktif: '',
   })
@@ -59,7 +57,8 @@ export default function HalaqahList() {
       })
       toast.success('Halaqah ditambahkan')
       setModalOpen(false)
-      setForm({ nama_kelompok: '', tingkat: 'TAHFIDZ', mentor: '', semester_aktif: '' })
+      // Reset form tanpa 'tingkat'
+      setForm({ nama_kelompok: '', mentor: '', semester_aktif: '' })
       refetch()
     } catch {
       toast.error('Gagal menambah halaqah')
@@ -99,7 +98,6 @@ export default function HalaqahList() {
                   <HiOutlineChevronRight className="h-5 w-5 text-gray-300 group-hover:text-gray-600" />
                 </div>
                 <div className="mt-4 flex gap-2">
-                  <Badge variant="neutral">{TINGKAT_HALAQAH[h.tingkat] || h.tingkat}</Badge>
                   <Badge variant="success">Aktif</Badge>
                 </div>
               </Card>
@@ -111,20 +109,7 @@ export default function HalaqahList() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Tambah Halaqah">
         <form onSubmit={handleCreate} className="space-y-4">
           <Input label="Nama kelompok" required value={form.nama_kelompok} onChange={(e) => setForm({ ...form, nama_kelompok: e.target.value })} />
-          <div>
-            <label className="text-sm font-medium text-gray-700">Tingkat</label>
-            <select
-              value={form.tingkat}
-              onChange={(e) => setForm({ ...form, tingkat: e.target.value })}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
-            >
-              {TINGKAT_OPTIONS.map((t) => (
-                <option key={t} value={t}>
-                  {TINGKAT_HALAQAH[t]}
-                </option>
-              ))}
-            </select>
-          </div>
+          
           <div>
             <label className="text-sm font-medium text-gray-700">Mentor</label>
             <select

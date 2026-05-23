@@ -16,7 +16,7 @@ import { mentorService } from '../../services/mentorService'
 import { useAuthStore } from '../../store/authStore'
 import { canManageHalaqah } from '../../utils/roleHelpers'
 import { formatDate } from '../../utils/formatters'
-import { TINGKAT_HALAQAH } from '../../utils/constants'
+// HAPUS import TINGKAT_HALAQAH dari sini
 
 export default function HalaqahDetail() {
   const { id } = useParams()
@@ -60,7 +60,7 @@ export default function HalaqahDetail() {
       <PageHeader
         title={halaqah?.nama_kelompok || 'Detail Halaqah'}
         subtitle={`Mentor: ${mentor?.nama_lengkap || '-'} · Semester: ${halaqah?.semester_aktif || '-'}`}
-        action={<Badge variant="neutral">{TINGKAT_HALAQAH[halaqah?.tingkat] || halaqah?.tingkat}</Badge>}
+        action={<Badge variant="success">Aktif</Badge>} // Badge diubah jadi 'Aktif'
       />
 
       {canManage && (
