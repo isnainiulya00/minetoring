@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import toast from 'react-hot-toast'
+import axios from 'axios'
 import PageHeader from '../../components/common/PageHeader'
 import Button from '../../components/common/Button'
 import Modal from '../../components/common/Modal'
@@ -13,17 +14,37 @@ import { HiPlus, HiTrash, HiOutlineDocumentArrowDown, HiPencilSquare, HiOutlineL
 const emptyForm = () => ({
   pertemuan_ke: '',
   tanggal: '',
-  // Tambahkan 'url' ke kerangka dasar materi
   materi: [{ topik: '', deskripsi: '', file: null, url: '' }]
 })
 
-export default function JadwalMateri() {
+export default function Jadwal() {
   const { data: jadwal, loading, refetch } = useApi(jadwalService.getAll, [])
   
   const [modalOpen, setModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [form, setForm] = useState(emptyForm())
+  
+  // 👇 STATE BARU UNTUK MENYIMPAN ROLE USER 👇
+  const [userRole, setUserRole] = useState(null)
+
+  // 👇 AMBIL DATA ROLE SAAT HALAMAN DIBUKA 👇
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const accessToken = localStorage.getItem('mine_toring_access')
+        if (accessToken) {
+          const res = await axios.get('http://localhost:8000/api/users/me/', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          })
+          setUserRole(res.data.role)
+        }
+      } catch (err) {
+        console.error("Gagal memuat profil user", err)
+      }
+    }
+    fetchUserRole()
+  }, [])
 
   const handleOpenModal = (item = null) => {
     if (item) {
@@ -38,7 +59,7 @@ export default function JadwalMateri() {
               deskripsi: m.deskripsi, 
               file: null, 
               file_url: m.file,
-              url: m.url || '' // Tarik url lama dari backend jika ada
+              url: m.url || '' 
             }))
           : [{ topik: '', deskripsi: '', file: null, url: '' }]
       })
@@ -76,21 +97,16 @@ export default function JadwalMateri() {
         if (m.id) fd.append(`materi[${index}][id]`, m.id)
         fd.append(`materi[${index}][topik]`, m.topik)
         fd.append(`materi[${index}][deskripsi]`, m.deskripsi)
-        
-        // Kirim url jika diisi
         if (m.url) fd.append(`materi[${index}][url]`, m.url)
-        
-        if (m.file) {
-          fd.append(`materi[${index}][file]`, m.file)
-        }
+        if (m.file) fd.append(`materi[${index}][file]`, m.file)
       })
 
       if (editingId) {
         await jadwalService.update(editingId, fd)
-        toast.success('Jadwal & Materi berhasil diperbarui')
+        toast.success('Jadwal & Materi diperbarui')
       } else {
         await jadwalService.create(fd)
-        toast.success('Jadwal & Materi berhasil ditambahkan')
+        toast.success('Jadwal & Materi ditambahkan')
       }
 
       setModalOpen(false)
@@ -106,7 +122,7 @@ export default function JadwalMateri() {
     if (!window.confirm('Hapus jadwal pertemuan ini beserta seluruh materinya?')) return
     try {
       await jadwalService.delete(id)
-      toast.success('Jadwal berhasil dihapus')
+      toast.success('Jadwal dihapus')
       refetch()
     } catch {
       toast.error('Gagal menghapus data')
@@ -115,7 +131,11 @@ export default function JadwalMateri() {
 
   return (
     <>
-      <PageHeader title="Jadwal & Materi Pertemuan" action={<Button onClick={() => handleOpenModal()}>Tambah Jadwal</Button>} />
+      <PageHeader 
+        title="Jadwal & Materi Pertemuan" 
+        // 👇 Tombol Tambah HANYA MUNCUL JIKA KMF 👇
+        action={userRole === 'KMF' ? <Button onClick={() => handleOpenModal()}>Tambah Jadwal</Button> : null} 
+      />
 
       <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
@@ -124,14 +144,15 @@ export default function JadwalMateri() {
               <th className="px-6 py-4 w-24">Pert.</th>
               <th className="px-6 py-4 w-44">Tanggal</th>
               <th className="px-6 py-4">Materi Terlampir</th>
-              <th className="px-6 py-4 text-right w-40">Aksi</th>
+              {/* 👇 Header Aksi HANYA MUNCUL JIKA KMF 👇 */}
+              {userRole === 'KMF' && <th className="px-6 py-4 text-right w-40">Aksi</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {loading ? (
-              <tr><td colSpan={4} className="p-10 text-center text-gray-400">Memuat data...</td></tr>
+              <tr><td colSpan={userRole === 'KMF' ? 4 : 3} className="p-10 text-center text-gray-400">Memuat data...</td></tr>
             ) : jadwal?.length === 0 ? (
-              <tr><td colSpan={4} className="p-10 text-center text-gray-400">Belum ada jadwal.</td></tr>
+              <tr><td colSpan={userRole === 'KMF' ? 4 : 3} className="p-10 text-center text-gray-400">Belum ada jadwal.</td></tr>
             ) : (
               jadwal?.map((j) => (
                 <tr key={j.id} className="hover:bg-gray-50/50 transition">
@@ -147,7 +168,6 @@ export default function JadwalMateri() {
                           </div>
                           
                           <div className="flex shrink-0 border-l border-gray-100 pl-2">
-                            {/* Tombol Link Eksternal */}
                             {m.url && (
                               <a href={m.url} target="_blank" rel="noreferrer" 
                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition" title="Buka Tautan Materi">
@@ -155,7 +175,6 @@ export default function JadwalMateri() {
                               </a>
                             )}
                             
-                            {/* Tombol Download File */}
                             {(m.file || m.file_url) && (
                               <a href={mediaUrl(m.file || m.file_url)} target="_blank" rel="noreferrer" 
                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Download Materi">
@@ -167,16 +186,20 @@ export default function JadwalMateri() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-5">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => handleOpenModal(j)}>
-                        <HiPencilSquare className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="danger" onClick={() => handleDelete(j.id)}>
-                        <HiTrash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
+                  
+                  {/* 👇 Tombol Edit/Delete HANYA MUNCUL JIKA KMF 👇 */}
+                  {userRole === 'KMF' && (
+                    <td className="px-6 py-5">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="secondary" onClick={() => handleOpenModal(j)}>
+                          <HiPencilSquare className="h-4 w-4" />
+                        </Button>
+                        <Button size="sm" variant="danger" onClick={() => handleDelete(j.id)}>
+                          <HiTrash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -184,6 +207,7 @@ export default function JadwalMateri() {
         </table>
       </div>
 
+      {/* Modal form ini sebenarnya aman karena tombol pemicunya udah disembunyikan buat non-KMF */}
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? `Edit Pertemuan #${form.pertemuan_ke}` : 'Tambah Jadwal & Materi'} >
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -196,13 +220,12 @@ export default function JadwalMateri() {
               value={form.pertemuan_ke} 
               onChange={e => {
                 const val = e.target.value;
-                // Mencegah pengetikan angka minus secara langsung
                 if (val === '' || parseInt(val) >= 1) {
                   setForm({ ...form, pertemuan_ke: val });
                 }
               }} 
             />
-       <Input label="Tanggal" type="date" required value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} />
+           <Input label="Tanggal" type="date" required value={form.tanggal} onChange={e => setForm({ ...form, tanggal: e.target.value })} />
           </div>
           
           <div className="border-t border-gray-100 pt-4 max-h-[55vh] overflow-y-auto pr-2 scrollbar-thin">
@@ -231,14 +254,12 @@ export default function JadwalMateri() {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white border border-gray-100 rounded-xl mt-2">
-                      {/* Input URL */}
                       <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Tautan / Link</label>
                         <input type="url" placeholder="https://..." className="w-full text-xs rounded-lg border border-gray-200 p-2 mt-1 focus:border-blue-500 outline-none"
                                value={m.url} onChange={e => handleMateriChange(index, 'url', e.target.value)} />
                       </div>
                       
-                      {/* Input File */}
                       <div>
                         <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                           {editingId && m.file_url ? 'Ganti File (Opsional)' : 'Upload File (Opsional)'}

@@ -11,14 +11,14 @@ export const API_BASE_URL =
 // ===============================
 
 export const ROLES = {
-  ADMIN: 'ADMIN',
+  ADMIN: 'LPPIK',
   KMF: 'KMF',
   MENTOR: 'MENTOR',
   MENTEE: 'MENTEE',
 }
 
 export const ROLE_LABELS = {
-  ADMIN: 'Admin LPPIK',
+  LPPIK: 'Admin LPPIK',
   KMF: 'Koordinator Mentoring Fakultas',
   MENTOR: 'Mentor',
   MENTEE: 'Mentee',

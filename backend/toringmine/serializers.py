@@ -216,7 +216,10 @@ class MenteeSerializer(serializers.ModelSerializer):
     def get_presensi_summary(self, obj):
         return presensi_summary(obj)
 
-
+class MenteeMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Mentee
+        fields = ['id', 'nim', 'nama_lengkap']
 class HalaqahSerializer(serializers.ModelSerializer):
     mentor_nama = serializers.CharField(source='mentor.nama_lengkap', read_only=True)
     jumlah_mentee = serializers.SerializerMethodField()
@@ -229,7 +232,7 @@ class HalaqahSerializer(serializers.ModelSerializer):
         source='anggota_mentee', # Sesuai dengan related_name di models.py
         required=False
     )
-
+    mentees = MenteeMiniSerializer(source='anggota_mentee', many=True, read_only=True)
     class Meta:
         model = Halaqah
         fields = '__all__'
@@ -314,7 +317,8 @@ class JurnalPertemuanSerializer(serializers.ModelSerializer):
 class PresensiSerializer(serializers.ModelSerializer):
     mentee_nama = serializers.CharField(source='mentee.nama_lengkap', read_only=True)
     # Narik nomor pertemuan dari relasi Jurnal -> Jadwal
-    pertemuan_ke = serializers.IntegerField(source='jurnal.jadwal.pertemuan_ke', read_only=True)
+    pertemuan_ke = serializers.IntegerField(source='jadwal.pertemuan_ke', read_only=True)
+    tanggal_jadwal = serializers.DateField(source='jadwal.tanggal', read_only=True)
     surat_izin_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -359,13 +363,40 @@ class ResumeSerializer(serializers.ModelSerializer):
         return None
 
 
+from rest_framework import serializers
+from .models import Mutabaah
+
 class MutabaahSerializer(serializers.ModelSerializer):
-    mentee_nama = serializers.CharField(source='mentee.nama_lengkap', read_only=True)
+    # 1. Deklarasikan field gaibnya pakai SerializerMethodField
+    nama_mentee = serializers.SerializerMethodField()
+    nim_mentee = serializers.SerializerMethodField()
+    nama_halaqah = serializers.SerializerMethodField()
 
     class Meta:
         model = Mutabaah
-        fields = '__all__'
+        fields = [
+            'id', 'mentee', 'pertemuan_ke', 'tanggal', 
+            'materi_bacaan', 'rentang_bacaan', 'nilai', 'catatan_mentor',
+            # 2. Pastikan daftarkan namanya di sini
+            'nama_mentee', 'nim_mentee', 'nama_halaqah' 
+        ]
 
+    # 3. Bikin fungsi pengamannya (Anti Error 500)
+    def get_nama_mentee(self, obj):
+        if obj.mentee:
+            return obj.mentee.nama_lengkap
+        return "Unknown Mentee"
+
+    def get_nim_mentee(self, obj):
+        if obj.mentee:
+            return obj.mentee.nim
+        return "-"
+
+    def get_nama_halaqah(self, obj):
+        # Mengecek dengan aman apakah mentee punya halaqah
+        if obj.mentee and obj.mentee.halaqah:
+            return obj.mentee.halaqah.nama_kelompok
+        return "Belum diplot"
 
 # ==========================================
 # 5. INFORMASI & SERTIFIKAT

@@ -4,7 +4,7 @@ import { ROLES } from './constants'
 // ROLE CHECK
 // ===============================
 
-export const isAdmin = (user) => user?.role === ROLES.ADMIN 
+export const isAdmin = (user) => user?.role === ROLES.LPPIK
 export const isKMF = (user) => user?.role === ROLES.KMF
 export const isMentor = (user) => user?.role === ROLES.MENTOR
 export const isMentee = (user) => user?.role === ROLES.MENTEE
@@ -33,7 +33,7 @@ export const canGradeResume = (user) => isMentor(user)
 export function getDashboardPath(user) {
   if (!user) return '/dashboard'
   switch (user.role) {
-    case ROLES.ADMIN: return '/dashboard/lppik'
+    case ROLES.LPPIK: return '/dashboard/lppik'
     case ROLES.KMF: return '/dashboard/kmf'
     case ROLES.MENTOR: return '/dashboard/mentor'
     case ROLES.MENTEE: return '/dashboard/mentee'
@@ -52,13 +52,13 @@ export function getLoginRedirectPath(user) {
 export const ROUTE_ACCESS = {
   '/dashboard': [],
   '/management': [ROLES.KMF],
-  '/halaqah': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/jadwal': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE], // Jadwal & Materi di sini
-  '/presensi': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/resume': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/mutabaah': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/sertifikat': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/informasi': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/halaqah': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/jadwal': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE], // Jadwal & Materi di sini
+  '/presensi': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/resume': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/mutabaah': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/sertifikat': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/informasi': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
   '/profile': [],
   '/settings': [],
 }
@@ -83,13 +83,13 @@ export function getNavItems(user) {
   if (!user) return []
 
   switch (user.role) {
-    case ROLES.ADMIN:
+    case ROLES.LPPIK:
       return [
         { path: '/dashboard/lppik', label: 'Dashboard', icon: 'dashboard' },
         { path: '/halaqah/rekap', label: 'Rekap Halaqah', icon: 'halaqah' },
         { path: '/presensi/rekap', label: 'Rekap Presensi', icon: 'presensi' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        { path: '/profile', label: 'Profil', icon: 'profile' },
+        
       ]
 
     case ROLES.KMF:
@@ -101,21 +101,22 @@ export function getNavItems(user) {
         { path: '/management/halaqah', label: 'Kelola Halaqah', icon: 'halaqah' }, // <-- Cukup satu ini saja
         { path: '/presensi/mentor', label: 'Presensi Mentor', icon: 'presensi' },
         { path: '/presensi/mentee', label: 'Presensi Mentee', icon: 'presensi' }, 
+        { path: "/rekap/mutabaah", label: "Rekap Mutabaah", icon: "mutabaah" },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        { path: '/profile', label: 'Profil', icon: 'profile' },
+        
       ]
 
     case ROLES.MENTOR:
       return [
         { path: '/dashboard/mentor', label: 'Dashboard', icon: 'dashboard' },
-        { path: '/halaqah', label: 'Halaqah Saya', icon: 'halaqah' },
+        { path: '/halaqah-saya', label: 'Halaqah Saya', icon: 'halaqah' },
         { path: '/presensi/mentee', label: 'Isi Presensi', icon: 'presensi' },
-        { path: '/mutabaah/tahsin', label: 'Mutabaah', icon: 'mutabaah' },
+        { path: '/mutabaah/', label: 'Mutabaah', icon: 'mutabaah' },
         { path: '/resume/review', label: 'Review Resume', icon: 'resume' },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' }, // Ubah labelnya biar jelas
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        { path: '/profile', label: 'Profil', icon: 'profile' },
+       
       ]
 
     default: // MENTEE
@@ -124,9 +125,9 @@ export function getNavItems(user) {
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' }, // Ubah labelnya biar jelas
         { path: '/presensi/diri', label: 'Presensi Saya', icon: 'presensi' },
         { path: '/resume/upload', label: 'Upload Resume', icon: 'resume' },
-        { path: '/mutabaah/tahsin', label: 'Progress Hafalan', icon: 'mutabaah' }, 
+        { path: '/mutabaah/tahsin', label: 'Mutabaah', icon: 'mutabaah' }, 
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        { path: '/profile', label: 'Profil', icon: 'profile' },
+        
       ]
   }
 }

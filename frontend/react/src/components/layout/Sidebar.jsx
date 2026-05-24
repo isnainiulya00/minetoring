@@ -47,7 +47,6 @@ const iconMap = {
   jadwal: HiOutlineCalendarDays,
   sertifikat: HiOutlineDocumentText,
 
-  profile: HiOutlineUserCircle,
   settings: HiOutlineCog6Tooth,
 }
 
@@ -267,6 +266,7 @@ export default function Sidebar({
 
           </motion.div>
 
+          
         </div>
       )}
 

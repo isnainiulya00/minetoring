@@ -141,15 +141,18 @@ return false
 
 },
 
-updateUser:(user)=>{
+updateUser: (newUserData) => {
+  // 1. Ambil data user lama yang ada di brankas saat ini
+  const currentUser = get().user
 
-localStorage.setItem(
-STORAGE_KEYS.USER,
-JSON.stringify(user)
-)
+  // 2. Gabungkan data lama dan data baru (yang baru akan menimpa yang lama)
+  const mergedUser = { ...currentUser, ...newUserData }
 
-set({user})
+  // 3. Simpan ke LocalStorage
+  localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mergedUser))
 
+  // 4. Update brankas Zustand
+  set({ user: mergedUser })
 }
 
 }),

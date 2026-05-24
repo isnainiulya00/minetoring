@@ -91,6 +91,26 @@ class HalaqahViewSet(viewsets.ModelViewSet):
     serializer_class = HalaqahSerializer
     permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
 
+    def get_queryset(self):
+        user = self.request.user
+
+        # 1. Jika yang login adalah KMF atau Admin (Bisa lihat semua halaqah)
+        if user.role in ['KMF', 'LPPIK'] or user.is_superuser:
+            return Halaqah.objects.all()
+
+        # 2. Jika yang login adalah MENTOR
+        elif user.role == 'MENTOR':
+            # Cari halaqah yang kolom mentor-nya terhubung dengan akun yang sedang login
+            return Halaqah.objects.filter(mentor__user=user)
+
+        # 3. Jika yang login adalah MENTEE (Opsional, sekalian biar fiturnya lengkap)
+        elif user.role == 'MENTEE':
+            # Cari halaqah yang anggota menteenya terhubung dengan akun yang sedang login
+            return Halaqah.objects.filter(anggota_mentee__user=user)
+
+        # Jika role tidak dikenali, jangan tampilkan apa-apa
+        return Halaqah.objects.none()
+
 # ==========================================
 # 2. VIEWS JADWAL & MATERI GLOBAL
 # ==========================================
@@ -234,11 +254,14 @@ class MutabaahViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'MENTOR':
+        if user.role in ['KMF', 'LPPIK']:
+            return Mutabaah.objects.all()
+        elif user.role == 'MENTOR':
             return Mutabaah.objects.filter(mentee__halaqah__mentor__user=user)
         elif user.role == 'MENTEE':
+            # 👇 Biar mentee cuma bisa liat miliknya sendiri
             return Mutabaah.objects.filter(mentee__user=user)
-        return Mutabaah.objects.all()
+        return Mutabaah.objects.none()
 
 class ResumeViewSet(viewsets.ModelViewSet):
     serializer_class = ResumeSerializer

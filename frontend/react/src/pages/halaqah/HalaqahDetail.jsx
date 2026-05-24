@@ -51,16 +51,25 @@ export default function HalaqahDetail() {
   }
 
   if (loading) return <TableSkeleton rows={6} cols={4} />
+  const userStr = localStorage.getItem('mine_toring_user');
+  let userRole = null;
+  if (userStr) {
+    try {
+      userRole = JSON.parse(userStr).role?.toUpperCase();
+    } catch (e) {}
+  }
 
   return (
     <>
-      <Link to="/halaqah" className="mb-4 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
-        <HiOutlineArrowLeft /> Kembali
-      </Link>
+      {userRole !== 'MENTOR' && (
+    <Link to="/halaqah" className="text-blue-600 hover:underline mb-4 inline-block">
+      &larr; Kembali
+    </Link>
+    )}
       <PageHeader
         title={halaqah?.nama_kelompok || 'Detail Halaqah'}
         subtitle={`Mentor: ${mentor?.nama_lengkap || '-'} · Semester: ${halaqah?.semester_aktif || '-'}`}
-        action={<Badge variant="success">Aktif</Badge>} // Badge diubah jadi 'Aktif'
+        
       />
 
       {canManage && (
@@ -84,28 +93,12 @@ export default function HalaqahDetail() {
         </Card>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card glass>
-          <CardHeader title="Jadwal Mentoring" subtitle={`${jadwalHalaqah.length} pertemuan`} />
-          <Table
-            columns={[
-              { key: 'pertemuan', label: 'Pertemuan' },
-              { key: 'tanggal', label: 'Tanggal' },
-              { key: 'topik', label: 'Topik' },
-            ]}
-            data={jadwalHalaqah}
-            renderRow={(row) => (
-              <>
-                <td className="px-4 py-3">#{row.pertemuan_ke}</td>
-                <td className="px-4 py-3">{formatDate(row.tanggal)}</td>
-                <td className="px-4 py-3">{row.topik}</td>
-              </>
-            )}
-          />
-        </Card>
+      <div className="w-full space-y-6">
+        
 
         <Card>
           <CardHeader title="Mentee" subtitle="Anggota kelompok & rekap kehadiran" />
+          
           <ul className="space-y-2">
             {menteesHalaqah.length === 0 && (
               <p className="text-sm text-gray-500">Belum ada mentee di halaqah ini.</p>

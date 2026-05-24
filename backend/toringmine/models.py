@@ -221,8 +221,7 @@ class Mutabaah(models.Model):
     # Menggantikan model Hafalan agar fleksibel untuk Takhasus, Tahsin, dan Tahfidz
     mentee = models.ForeignKey(Mentee, on_delete=models.CASCADE, related_name='mutabaah_mentee')
     tanggal = models.DateField(default=timezone.now)
-    
-    # Bisa diisi "Al-Baqarah" (untuk Tahfidz/Tahsin) atau "Iqro Jilid 4" (untuk Takhasus)
+    pertemuan_ke = models.IntegerField(null=True, blank=True) # Bisa diisi "Al-Baqarah" (untuk Tahfidz/Tahsin) atau "Iqro Jilid 4" (untuk Takhasus)
     materi_bacaan = models.CharField(max_length=150, help_text="Contoh: Al-Baqarah / Iqro Jilid 4")
     
     # Bisa diisi "Ayat 1-10" atau "Halaman 15"
@@ -250,30 +249,21 @@ class Sertifikat(models.Model):
     
 
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        # 1. Gabungkan first_name dan last_name dari AbstractUser
-        nama_gabungan = f"{instance.first_name} {instance.last_name}".strip()
-        # Kalau namanya kosong melompong, pakai username (NIM) sebagai gantinya
-        if not nama_gabungan:
-            nama_gabungan = instance.username
+def sync_user_profile_from_frontend(sender, instance, created, **kwargs):
+    # 1. JIKA YANG DI-EDIT/DI-SIMPAN ADALAH MENTEE
+    if instance.role == 'MENTEE':
+        # Ambil atau buat profil menteenya dulu
+        mentee, created_profile = Mentee.objects.get_or_create(
+            user=instance,
+            defaults={'prodi': '-'} # Jaga-jaga kalau user baru biar gak error prodi kosong
+        )
+        # Sinkronisasikan data terbaru dari form Frontend
+        mentee.nim = instance.nim
+        mentee.nama_lengkap = instance.first_name
+        mentee.save()
 
-        if instance.role == 'MENTOR':
-            # Mentor TIDAK ADA field 'nim', tapi wajib isi 'nama_lengkap'
-            Mentor.objects.get_or_create(
-                user=instance,
-                defaults={
-                    'nama_lengkap': nama_gabungan,
-                    'no_hp': instance.no_hp
-                }
-            )
-        elif instance.role == 'MENTEE':
-            # Mentee butuh 'nim', 'nama_lengkap', dan 'prodi'
-            Mentee.objects.get_or_create(
-                user=instance,
-                defaults={
-                    'nim': instance.nim,
-                    'nama_lengkap': nama_gabungan,
-                    'prodi': '-'  # Diisi strip dulu, nanti KMF bisa edit
-                }
-            )
+    # 2. JIKA YANG DI-EDIT/DI-SIMPAN ADALAH MENTOR
+    elif instance.role == 'MENTOR':
+        mentor, created_profile = Mentor.objects.get_or_create(user=instance)
+        mentor.nama_lengkap = instance.first_name
+        mentor.save()

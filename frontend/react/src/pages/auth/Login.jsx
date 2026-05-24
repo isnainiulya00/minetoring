@@ -9,17 +9,14 @@ import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
 
 export default function Login() {
-  // 1. State Management
   const [errorMsg, setErrorMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ username: '', password: '' })
   
-  // 2. Hooks Setup
   const navigate = useNavigate()
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
 
-  // 3. Fungsi Submit
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErrorMsg('') 
@@ -30,17 +27,20 @@ export default function Login() {
       
       toast.success('Selamat datang kembali!')
       
+      // Mengambil rute tujuan berdasarkan role (KMF, MENTOR, MENTEE)
       const from = location.state?.from?.pathname || getLoginRedirectPath(result?.user)
       navigate(from, { replace: true })
       
     } catch (error) {
-      // 👇 LOGIKA TANGKAP ERROR BERADA DI SINI (Di dalam fungsi JS)
       if (error.response) {
         const status = error.response.status
         
         if (status === 401) {
-          // Cetak pesan jujur dari Django (Entah itu salah password / belum aktif)
           setErrorMsg(error.response.data?.detail || 'Username atau password salah.')
+        } else if (status === 403) {
+          // 👇 TANGKAPAN KHUSUS 403 DITAMBAHKAN DI SINI 👇
+          setErrorMsg('Akses ditolak (403). Role Anda tidak diizinkan mengakses data ini.')
+          console.error("Detail 403:", error.response.data)
         } else if (status === 404) {
           setErrorMsg('Sistem tidak merespon (Endpoint tidak ditemukan).')
         } else if (status === 500) {
@@ -74,7 +74,6 @@ export default function Login() {
         <h2 className="font-display text-xl font-semibold text-gray-900">Masuk</h2>
         <p className="mt-1 mb-6 text-sm text-gray-500">Gunakan kredensial akun Anda</p>
 
-        {/* 👇 KOTAK ERROR MERAH (Bentuknya Elemen UI HTML/JSX) 👇 */}
         {errorMsg && (
           <div className="mb-4 rounded-lg bg-red-50 p-4 border border-red-200">
             <div className="flex items-center gap-3">

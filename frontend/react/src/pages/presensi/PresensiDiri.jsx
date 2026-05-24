@@ -10,6 +10,7 @@ export default function PresensiDiri() {
   const { data: presensi, loading } = useApi(presensiService.getAll, [])
 
   if (loading) return <TableSkeleton rows={5} />
+  console.log("Isi Data Presensi:", presensi);
 
   return (
     <>

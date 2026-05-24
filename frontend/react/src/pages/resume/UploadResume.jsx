@@ -18,7 +18,6 @@ import { mediaUrl } from '../../utils/mediaUrl'
 export default function UploadResume() {
   const user = useAuthStore((s) => s.user)
   
-  // Mentee hanya menarik data resumenya sendiri (sebaiknya ini difilter di backend, tapi kita filter juga di frontend untuk jaga-jaga)
   const { data: resumes, loading, refetch } = useApi(resumeService.getAll, [])
   const { data: jadwal } = useApi(jadwalService.getAll, [])
   const { data: mentees } = useApi(menteeService.getAll, [])
@@ -29,17 +28,24 @@ export default function UploadResume() {
   const [uploading, setUploading] = useState(false)
 
   // Mencari ID mentee milik user yang sedang login
-  const myMentee = useMemo(() => (mentees ?? []).find((m) => m.user === user?.id), [mentees, user?.id])
+  const myMentee = useMemo(() => {
+    const rawMentees = Array.isArray(mentees) ? mentees : (mentees?.results || [])
+    return rawMentees.find((m) => m.user === user?.id)
+  }, [mentees, user?.id])
 
-  // Menampilkan hanya jadwal dari kelompok halaqah mentee ini
+  // 👇 PERBAIKAN 1: Jadwal KMF itu Global, jadi hilangkan filter halaqah! 👇
   const jadwalOptions = useMemo(() => {
-    if (!myMentee?.halaqah) return jadwal ?? []
-    return (jadwal ?? []).filter((j) => j.halaqah === myMentee.halaqah)
-  }, [jadwal, myMentee])
+    // Trik kebal pagination
+    const rawJadwal = Array.isArray(jadwal) ? jadwal : (jadwal?.results || [])
+    // Langsung urutkan saja dari pertemuan 1, 2, dst
+    return rawJadwal.sort((a, b) => a.pertemuan_ke - b.pertemuan_ke)
+  }, [jadwal])
 
+  // 👇 PERBAIKAN 2: Kebal pagination untuk list Resume 👇
   const myResumes = useMemo(() => {
-    if (!myMentee?.id) return []
-    return (resumes ?? []).filter((r) => r.mentee === myMentee.id)
+    const rawResumes = Array.isArray(resumes) ? resumes : (resumes?.results || [])
+    if (!myMentee?.id) return rawResumes
+    return rawResumes.filter((r) => r.mentee === myMentee.id)
   }, [resumes, myMentee])
 
   const handleUpload = async (e) => {
@@ -53,7 +59,8 @@ export default function UploadResume() {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('jadwal', selectedJadwal)
-      // Asumsi backend otomatis mengenali mentee dari token, atau perlu append: fd.append('mentee', myMentee.id)
+      fd.append('mentee', myMentee.id)
+      // Backend (perform_create) otomatis membaca ID Mentee dari token user login
       
       const existing = myResumes.find((r) => r.jadwal === Number(selectedJadwal))
       if (existing) {
@@ -79,7 +86,7 @@ export default function UploadResume() {
     <>
       <PageHeader
         title="Resume Mentoring"
-        subtitle="Unggah ringkasan materi untuk kelompok Tahfidz dan Tahsin"
+        subtitle="Unggah ringkasan materi"
         action={
           <Button onClick={() => setUploadOpen(true)}>
             <HiOutlineDocumentArrowUp className="mr-1 h-4 w-4 inline" /> Upload Resume
@@ -96,7 +103,7 @@ export default function UploadResume() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-semibold text-gray-900">Pertemuan #{r.pertemuan_ke ?? r.jadwal}</h3>
-                  <p className="text-sm text-gray-500">{r.topik || 'Materi Mentoring'}</p>
+                  <p className="text-sm text-gray-500">{r.tanggal_jadwal || 'Terkirim'}</p>
                 </div>
                 <Badge variant="success">Terkirim</Badge>
               </div>
@@ -133,11 +140,12 @@ export default function UploadResume() {
               required
               value={selectedJadwal}
               onChange={(e) => setSelectedJadwal(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
               <option value="">Pilih pertemuan</option>
               {jadwalOptions.map((j) => (
-                <option key={j.id} value={j.id}>#{j.pertemuan_ke} — {j.topik || 'Pertemuan'}</option>
+                // Aku ganti j.topik jadi j.tanggal, karena topik ada di tabel MateriMentoring, bukan di Jadwal
+                <option key={j.id} value={j.id}>#{j.pertemuan_ke} </option>
               ))}
             </select>
           </div>
