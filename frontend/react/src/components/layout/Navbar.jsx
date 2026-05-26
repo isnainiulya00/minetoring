@@ -45,15 +45,17 @@ export default function Navbar({ onMenuClick }) {
   // HANDLER
   // ===============================
 
-  const handleLogout = ()=>{
+  const handleLogout = () => {
+  // 1. Hapus semua token dan data dari memori browser
+  localStorage.removeItem('mine_toring_access');
+  localStorage.removeItem('mine_toring_refresh');
+  
+  // (Opsional) Kalau kamu simpan data user di localStorage juga, hapus juga
+  // localStorage.removeItem('user_data');
 
-      logout()
-
-      navigate('/login',{
-          replace:true
-      })
-
-  }
+  // 2. Lempar kembali ke halaman login (pakai replace biar bersih)
+  window.location.replace('/login');
+}
 
 
   return (

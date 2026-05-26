@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { HiOutlineLockClosed } from 'react-icons/hi2'
@@ -13,7 +13,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ username: '', password: '' })
   
-  const navigate = useNavigate()
   const location = useLocation()
   const login = useAuthStore((s) => s.login)
 
@@ -23,13 +22,17 @@ export default function Login() {
     setLoading(true)
 
     try {
+      // 1. Eksekusi login via state management (Zustand/Store)
       const result = await login(form.username, form.password)
       
       toast.success('Selamat datang kembali!')
       
-      // Mengambil rute tujuan berdasarkan role (KMF, MENTOR, MENTEE)
-      const from = location.state?.from?.pathname || getLoginRedirectPath(result?.user)
-      navigate(from, { replace: true })
+      // 2. Tentukan rute tujuan berdasarkan role user (KMF, MENTOR, atau MENTEE)
+      const targetPath = getLoginRedirectPath(result?.user)
+      // 3. 🔥 HARD RELOAD 🔥
+      // Memaksa browser mereset state dan langsung menggunakan token baru
+      // window.location.replace mencegah user kembali (back) ke halaman login
+      window.location.replace(targetPath)
       
     } catch (error) {
       if (error.response) {
@@ -38,9 +41,7 @@ export default function Login() {
         if (status === 401) {
           setErrorMsg(error.response.data?.detail || 'Username atau password salah.')
         } else if (status === 403) {
-          // 👇 TANGKAPAN KHUSUS 403 DITAMBAHKAN DI SINI 👇
           setErrorMsg('Akses ditolak (403). Role Anda tidak diizinkan mengakses data ini.')
-          console.error("Detail 403:", error.response.data)
         } else if (status === 404) {
           setErrorMsg('Sistem tidak merespon (Endpoint tidak ditemukan).')
         } else if (status === 500) {
@@ -49,7 +50,7 @@ export default function Login() {
           setErrorMsg(error.response.data?.detail || 'Gagal masuk. Silakan coba lagi.')
         }
       } else {
-        setErrorMsg('Tidak dapat terhubung ke server. Periksa koneksi internet.')
+        setErrorMsg('Tidak dapat terhubung ke server. Periksa koneksi internet Anda.')
       }
     } finally {
       setLoading(false)
@@ -62,6 +63,7 @@ export default function Login() {
       animate={{ opacity: 1, y: 0 }}
       className="w-full max-w-md"
     >
+      {/* Header Mobile */}
       <div className="mb-8 lg:hidden">
         <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-900 font-display text-sm font-bold text-white">
           MT

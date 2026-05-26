@@ -12,6 +12,7 @@ export default function RekapMutabaah() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedKategori, setSelectedKategori] = useState('ALL')
   const [selectedHalaqah, setSelectedHalaqah] = useState('ALL')
+  const [selectedPertemuan, setSelectedPertemuan] = useState('ALL')
 
   const accessToken = localStorage.getItem('mine_toring_access')
 
@@ -26,7 +27,7 @@ export default function RekapMutabaah() {
         setDataRekap(data)
       } catch (err) {
         toast.error("Gagal memuat data rekap mutabaah")
-        console.error(err)
+        console.error("Error Fetch:", err)
       } finally {
         setLoading(false)
       }
@@ -34,79 +35,70 @@ export default function RekapMutabaah() {
     fetchGlobalMutabaah()
   }, [accessToken])
 
-  // 2. Ambil List Halaqah Unik untuk Dropdown Filter
+  // 2. Ambil List Unik untuk Dropdown (Halaqah & Pertemuan)
   const listHalaqahUnik = useMemo(() => {
     const setHalaqah = new Set(dataRekap.map(item => item.nama_halaqah || 'Tanpa Kelompok'))
     return ['ALL', ...Array.from(setHalaqah)]
   }, [dataRekap])
 
-  // 3. Logika Filter Data (Search + Dropdown)
+  const listPertemuanUnik = useMemo(() => {
+    const setPertemuan = new Set(dataRekap.map(item => item.pertemuan_ke).filter(Boolean))
+    return ['ALL', ...Array.from(setPertemuan).sort((a, b) => a - b)]
+  }, [dataRekap])
+
+  // 3. Logika Filter Data (Search + 3 Dropdown)
   const dataTerfilter = useMemo(() => {
     return dataRekap.filter(item => {
       const namaMentee = (item.nama_mentee || '').toLowerCase()
       const nimMentee = (item.nim_mentee || '').toLowerCase()
       const materi = (item.materi_bacaan || '').toString().toLowerCase()
       const halaqah = item.nama_halaqah || 'Tanpa Kelompok'
+      const pertemuan = item.pertemuan_ke?.toString()
       
-      let kategoriItem = 'TAHSIN' // Default
+      let kategoriItem = item.tingkat && item.tingkat !== '-' 
+        ? item.tingkat.toUpperCase() 
+        : 'TAHSIN'
       
-      // Deteksi Takhasus: Jika ada kata "iqro" ATAU isinya cuma angka (misal: "6")
-      if (materi.includes('iqro') || /^[0-9]+$/.test(materi.trim())) {
-        kategoriItem = 'TAKHASUS'
-      } 
-      // Deteksi Tahfidz: Jika ada kata "juz", "surah", atau "hafal"
-      else if (materi.includes('juz') || materi.includes('surah') || materi.includes('hafal')) {
-        kategoriItem = 'TAHFIDZ'
+      if (!item.tingkat || item.tingkat === '-') {
+        if (materi.includes('iqro') || /^[0-9]+$/.test(materi.trim())) {
+          kategoriItem = 'TAKHASUS'
+        } else if (materi.includes('juz') || materi.includes('surah') || materi.includes('hafal')) {
+          kategoriItem = 'TAHFIDZ'
+        }
       }
 
       const matchSearch = namaMentee.includes(searchQuery.toLowerCase()) || nimMentee.includes(searchQuery.toLowerCase())
       const matchKategori = selectedKategori === 'ALL' || kategoriItem === selectedKategori
       const matchHalaqah = selectedHalaqah === 'ALL' || halaqah === selectedHalaqah
+      const matchPertemuan = selectedPertemuan === 'ALL' || pertemuan === selectedPertemuan.toString()
 
-      return matchSearch && matchKategori && matchHalaqah
+      return matchSearch && matchKategori && matchHalaqah && matchPertemuan
     })
-  }, [dataRekap, searchQuery, selectedKategori, selectedHalaqah])
+  }, [dataRekap, searchQuery, selectedKategori, selectedHalaqah, selectedPertemuan])
 
-  // 4. Hitung Statistik Cepat (KPI Cards)
-  const stats = useMemo(() => {
-    const total = dataTerfilter.length
-    const totalNilai = dataTerfilter.reduce((acc, curr) => acc + (curr.nilai || 0), 0)
-    const rataRata = total > 0 ? (totalNilai / total).toFixed(1) : '0'
-    return { totalMentee: total, rataNilai: rataRata }
-  }, [dataTerfilter])
-
-  // 5. Logika Grouping per Halaqah untuk Tabel
-  const groupedData = useMemo(() => {
-    const groups = {}
-    dataTerfilter.forEach(item => {
-      const halaqahName = item.nama_halaqah || 'Tanpa Kelompok'
-      if (!groups[halaqahName]) {
-        groups[halaqahName] = []
-      }
-      groups[halaqahName].push(item)
-    })
-    return groups
-  }, [dataTerfilter])
-
-  // 6. FUNGSI SAKTI EXPORT TO EXCEL
+  // 4. EXPORT TO EXCEL
   const handleExportExcel = () => {
     if (dataTerfilter.length === 0) {
       toast.error("Tidak ada data untuk diexport")
       return
     }
 
-    let csvContent = "No,Nama Mentee,Halaqah/Kelompok,Pertemuan Ke,Materi Bacaan,Rentang Halaman,Nilai,Tanggal Input\n"
+    // Tambah kolom catatan di Excel
+    let csvContent = "No,Nama Mentee,NIM,Tingkat,Halaqah,Materi Bacaan,Rentang Halaman,Catatan\n"
     
     dataTerfilter.forEach((r, index) => {
+      // Bersihkan enter atau koma di dalam catatan biar Excel nggak berantakan
+      const cleanCatatan = (r.catatan_mentor || '-').replace(/"/g, '""').replace(/\n/g, ' ')
+      
       const baris = [
         index + 1,
         `"${r.nama_mentee || 'Mentee'}"`,
+        `"${r.nim_mentee || '-'}"`,
+        `"${r.tingkat || '-'}"`,
         `"${r.nama_halaqah || '-'}"`,
-        `"Pertemuan ${r.pertemuan_ke}"`,
         `"${r.materi_bacaan || '-'}"`,
         `"${r.rentang_bacaan || '-'}"`,
-        r.nilai || 0,
-        `"${r.tanggal}"`
+        `"${cleanCatatan}"`
       ]
       csvContent += baris.join(",") + "\n"
     })
@@ -115,7 +107,7 @@ export default function RekapMutabaah() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.setAttribute("href", url)
-    link.setAttribute("download", `Rekap_Mutabaah_KMF_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute("download", `Rekap_Mutabaah_${selectedPertemuan !== 'ALL' ? 'P'+selectedPertemuan : 'Semua'}_${new Date().toISOString().split('T')[0]}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -137,23 +129,18 @@ export default function RekapMutabaah() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-8">
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+      {/* KPI Card */}
+      <div className="mt-8">
+        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm inline-block min-w-[250px]">
           <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Data Input</p>
-          <p className="text-3xl font-black text-gray-900 mt-2">{stats.totalMentee} <span className="text-sm font-medium text-gray-400">Setoran</span></p>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Rata-rata Nilai Mahasiswa</p>
-          <p className="text-3xl font-black text-blue-600 mt-2">{stats.rataNilai} <span className="text-sm font-medium text-gray-400">/ 100</span></p>
-        </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm sm:col-span-2 md:col-span-1">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status Kelancaran</p>
-          <p className="text-3xl font-black text-emerald-600 mt-2">Baik <span className="text-sm font-medium text-gray-400">(Sesuai Target)</span></p>
+          <p className="text-3xl font-black text-gray-900 mt-2">
+            {dataTerfilter.length} <span className="text-sm font-medium text-gray-400">Setoran</span>
+          </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm mt-8 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative w-full md:flex-1">
+      <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm mt-8 flex flex-col lg:flex-row gap-4 items-center">
+        <div className="relative w-full lg:flex-1">
           <HiOutlineSearch className="absolute left-4 top-3.5 text-gray-400 text-lg" />
           <input 
             type="text"
@@ -164,103 +151,124 @@ export default function RekapMutabaah() {
           />
         </div>
         
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <HiOutlineFilter className="text-gray-400 hidden sm:block" />
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 w-full lg:w-auto">
+          <HiOutlineFilter className="text-gray-400 hidden lg:block" />
+          
           <select 
             value={selectedKategori} 
             onChange={e => setSelectedKategori(e.target.value)}
-            className="w-full md:w-44 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
+            className="flex-1 md:w-36 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
           >
-            <option value="ALL">Semua Program</option>
+            <option value="ALL">Program (Semua)</option>
             <option value="TAHSIN">Tahsin</option>
             <option value="TAKHASUS">Takhasus</option>
             <option value="TAHFIDZ">Tahfidz</option>
           </select>
-        </div>
 
-        <select 
-          value={selectedHalaqah} 
-          onChange={e => setSelectedHalaqah(e.target.value)}
-          className="w-full md:w-52 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
-        >
-          <option value="ALL">Semua Halaqah</option>
-          {listHalaqahUnik.filter(h => h !== 'ALL').map((h, idx) => (
-            <option key={idx} value={h}>{h}</option>
-          ))}
-        </select>
+          <select 
+            value={selectedPertemuan} 
+            onChange={e => setSelectedPertemuan(e.target.value)}
+            className="flex-1 md:w-40 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
+          >
+            <option value="ALL">Pertemuan (Semua)</option>
+            {listPertemuanUnik.filter(p => p !== 'ALL').map((p, idx) => (
+              <option key={idx} value={p}>Pertemuan {p}</option>
+            ))}
+          </select>
+
+          <select 
+            value={selectedHalaqah} 
+            onChange={e => setSelectedHalaqah(e.target.value)}
+            className="flex-1 md:w-48 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
+          >
+            <option value="ALL">Halaqah (Semua)</option>
+            {listHalaqahUnik.filter(h => h !== 'ALL').map((h, idx) => (
+              <option key={idx} value={h}>{h}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm mt-6 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-gray-50/70 border-b border-gray-100 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                <th className="py-4 px-6 text-center w-16">No</th>
-                <th className="py-4 px-6">Mentee</th>
-                <th className="py-4 px-6">Halaqah</th>
-                <th className="py-4 px-6">Capaian Terakhir</th>
-                <th className="py-4 px-6 text-center">Nilai</th>
-                <th className="py-4 px-6">Tanggal</th>
+              <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
+                <th className="py-4 px-6 font-semibold min-w-[200px]">Mentee</th>
+                <th className="py-4 px-6 font-semibold text-center">Tingkat</th>
+                <th className="py-4 px-6 font-semibold">Halaqah</th>
+                <th className="py-4 px-6 font-semibold min-w-[300px]">Detail Mutabaah</th>
               </tr>
             </thead>
+            
             <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
-              {Object.keys(groupedData).length > 0 ? (
-                Object.entries(groupedData).map(([halaqahName, mentees]) => (
-                  <React.Fragment key={halaqahName}>
-                    <tr className="bg-gray-100/80 border-y border-gray-200">
-                      <td colSpan="6" className="py-3 px-6">
-                        <div className="flex items-center gap-2">
-                          <i className="fa-solid fa-users text-blue-600"></i>
-                          <span className="font-black text-gray-900 uppercase tracking-wider text-xs">
-                            Halaqah: <span className="text-blue-700">{halaqahName}</span>
-                          </span>
-                          <span className="ml-auto text-xs font-bold text-gray-500 bg-white px-2 py-1 rounded-lg border border-gray-200">
-                            {mentees.length} Data Capaian
-                          </span>
+              {dataTerfilter.length > 0 ? (
+                dataTerfilter.map((row, index) => {
+                  
+                  const tingkatLabel = row.tingkat && row.tingkat !== '-' 
+                    ? row.tingkat 
+                    : (row.materi_bacaan || '').toLowerCase().includes('iqro') ? 'Takhasus' : 'Tahsin'
+
+                  const badgeColor = tingkatLabel.toUpperCase() === 'TAKHASUS' 
+                    ? 'bg-emerald-100 text-emerald-700' 
+                    : tingkatLabel.toUpperCase() === 'TAHFIDZ' 
+                    ? 'bg-purple-100 text-purple-700' 
+                    : 'bg-blue-100 text-blue-700'
+
+                  return (
+                    <tr key={row.id || index} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 px-6">
+                        <p className="font-bold text-gray-900">{row.nama_mentee || 'Mahasiswa'}</p>
+                        <p className="text-xs text-gray-400 font-normal mt-0.5">{row.nim_mentee || 'NIM N/A'}</p>
+                      </td>
+                      
+                      <td className="py-4 px-6 text-center">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${badgeColor}`}>
+                          {tingkatLabel}
+                        </span>
+                      </td>
+
+                      <td className="py-4 px-6 font-semibold text-gray-700">
+                        {row.nama_halaqah}
+                      </td>
+
+                      {/* Tampilan Isi Mutabaah Baru: Bersih dan Langsung */}
+                      {/* Tampilan Isi Mutabaah Baru: Bersih dan Langsung */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-sm font-bold text-gray-900">
+                            
+                            {/* 👇 LOGIKA IQRO-NYA PINDAH KE SINI 👇 */}
+                            {tingkatLabel.toUpperCase() === 'TAKHASUS' 
+                              ? `Iqro' ${row.materi_bacaan || '-'}` 
+                              : row.materi_bacaan || '-'} 
+                              
+                            <span className="text-gray-300 font-normal mx-2">|</span> 
+                            
+                            {/* Tambahkan kata 'Jilid' atau 'Ayat' biar makin jelas */}
+                            <span className="text-gray-600 font-medium">
+                              {tingkatLabel.toUpperCase() === 'TAKHASUS' ? 'Hal. ' : 'Ayat '} 
+                              {row.rentang_bacaan || '-'}
+                            </span>
+                          </p>
+                          
+                          {/* 👇 CATATAN MENTOR KEMBALI KE FUNGSI ASLINYA 👇 */}
+                          {row.catatan_mentor && row.catatan_mentor.trim() !== '' && (
+                            <p className="text-[11px] text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 italic leading-relaxed mt-1">
+                              "{row.catatan_mentor}"
+                            </p>
+                          )}
                         </div>
                       </td>
-                    </tr>
-
-                    {mentees.map((row, index) => {
-                      // Deteksi Program UI
-                      const materiStr = (row.materi_bacaan || '').toLowerCase()
-                      const isTakhasus = materiStr.includes('iqro') || /^[0-9]+$/.test(materiStr.trim())
-                      const isTahfidz = materiStr.includes('juz') || materiStr.includes('surah') || materiStr.includes('hafal')
                       
-                      const badgeText = isTakhasus ? 'Takhasus' : isTahfidz ? 'Tahfidz' : 'Tahsin'
-                      const badgeColor = isTakhasus ? 'bg-emerald-100 text-emerald-700' : isTahfidz ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-
-                      return (
-                        <tr key={row.id || `${halaqahName}-${index}`} className="hover:bg-gray-50/50 transition-colors">
-                          <td className="py-4 px-6 text-center font-bold text-gray-400">{index + 1}</td>
-                          <td className="py-4 px-6">
-                            <p className="font-bold text-gray-900">{row.nama_mentee || 'Mahasiswa'}</p>
-                            <p className="text-xs text-gray-400 font-normal mt-0.5">{row.nim_mentee || 'NIM N/A'}</p>
-                          </td>
-                          <td className="py-4 px-6 text-gray-600">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${badgeColor}`}>
-                              {badgeText}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6">
-                            <span className="text-xs font-bold px-2 py-0.5 bg-gray-100 rounded mr-2 text-gray-800">P-{row.pertemuan_ke}</span>
-                            <span className="text-gray-900 font-semibold">{row.materi_bacaan}</span>
-                            <span className="text-gray-400 text-xs block mt-0.5">Rentang: {row.rentang_bacaan}</span>
-                          </td>
-                          <td className="py-4 px-6 text-center">
-                            <span className={`text-sm font-black px-3 py-1 rounded-xl ${row.nilai >= 80 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                              {row.nilai || '-'}
-                            </span>
-                          </td>
-                          <td className="py-4 px-6 text-xs text-gray-400">{row.tanggal}</td>
-                        </tr>
-                      )
-                    })}
-                  </React.Fragment>
-                ))
+                    </tr>
+                  )
+                })
               ) : (
                 <tr>
-                  <td colSpan="6" className="text-center py-12 text-gray-400 italic">Tidak ada data rekapitulasi yang cocok dengan kriteria filter.</td>
+                  <td colSpan="4" className="text-center py-12 text-gray-400 italic">
+                    Tidak ada data rekapitulasi yang cocok dengan kriteria filter.
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -227,7 +227,6 @@ class Mutabaah(models.Model):
     # Bisa diisi "Ayat 1-10" atau "Halaman 15"
     rentang_bacaan = models.CharField(max_length=100, help_text="Contoh: Ayat 1-10 / Halaman 15")
     
-    nilai = models.IntegerField(null=True, blank=True, validators=[MinValueValidator(0), MaxValueValidator(100)])
     catatan_mentor = models.TextField(null=True, blank=True)
 
     def __str__(self):

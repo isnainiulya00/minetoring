@@ -367,37 +367,35 @@ from rest_framework import serializers
 from .models import Mutabaah
 
 class MutabaahSerializer(serializers.ModelSerializer):
-    # 1. Deklarasikan field gaibnya pakai SerializerMethodField
     nama_mentee = serializers.SerializerMethodField()
     nim_mentee = serializers.SerializerMethodField()
     nama_halaqah = serializers.SerializerMethodField()
+    tingkat = serializers.SerializerMethodField() # 👈 TAMBAHKAN INI
 
     class Meta:
         model = Mutabaah
         fields = [
-            'id', 'mentee', 'pertemuan_ke', 'tanggal', 
-            'materi_bacaan', 'rentang_bacaan', 'nilai', 'catatan_mentor',
-            # 2. Pastikan daftarkan namanya di sini
-            'nama_mentee', 'nim_mentee', 'nama_halaqah' 
+            'id', 'mentee', 'pertemuan_ke', 'tanggal', 'materi_bacaan', 
+            'rentang_bacaan', 'catatan_mentor',
+            'nama_mentee', 'nim_mentee', 'nama_halaqah', 'tingkat'
         ]
 
-    # 3. Bikin fungsi pengamannya (Anti Error 500)
     def get_nama_mentee(self, obj):
-        if obj.mentee:
-            return obj.mentee.nama_lengkap
-        return "Unknown Mentee"
+        return obj.mentee.nama_lengkap if obj.mentee else "Unknown"
 
     def get_nim_mentee(self, obj):
-        if obj.mentee:
-            return obj.mentee.nim
-        return "-"
+        return obj.mentee.nim if obj.mentee else "-"
 
     def get_nama_halaqah(self, obj):
-        # Mengecek dengan aman apakah mentee punya halaqah
         if obj.mentee and obj.mentee.halaqah:
             return obj.mentee.halaqah.nama_kelompok
         return "Belum diplot"
 
+    # 👇 FUNGSI AMANKAN TINGKAT HALAQAH 👇
+    def get_tingkat(self, obj):
+        if obj.mentee and obj.mentee.halaqah:
+            return obj.mentee.halaqah.get_tingkat_display() # Mengambil 'Tahsin'/'Takhasus'/'Tahfidz'
+        return "-"
 # ==========================================
 # 5. INFORMASI & SERTIFIKAT
 # ==========================================
@@ -446,7 +444,7 @@ class HalaqahRekapSerializer(serializers.Serializer):
     resume_terkumpul = serializers.IntegerField()
     resume_total = serializers.IntegerField()
     
-    mutabaah_dinilai = serializers.IntegerField()
+   
     mutabaah_total = serializers.IntegerField()
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

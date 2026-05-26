@@ -26,7 +26,6 @@ export default function Tahfidz() {
     tanggal: new Date().toISOString().split('T')[0],
     materi_bacaan: '',
     rentang_bacaan: '',
-    nilai: '',
     catatan_mentor: ''
   })
 
@@ -91,7 +90,6 @@ export default function Tahfidz() {
       tanggal: riwayat.tanggal,
       materi_bacaan: riwayat.materi_bacaan,
       rentang_bacaan: riwayat.rentang_bacaan,
-      nilai: riwayat.nilai || '',
       catatan_mentor: riwayat.catatan_mentor || ''
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -100,7 +98,7 @@ export default function Tahfidz() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', nilai: '', catatan_mentor: '' }))
+    setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', catatan_mentor: '' }))
   }
 
   const handleDelete = async (id) => {
@@ -130,7 +128,6 @@ export default function Tahfidz() {
       tanggal: form.tanggal,
       materi_bacaan: form.materi_bacaan,
       rentang_bacaan: form.rentang_bacaan,
-      nilai: form.nilai ? parseInt(form.nilai) : null,
       catatan_mentor: form.catatan_mentor
     }
 
@@ -148,7 +145,7 @@ export default function Tahfidz() {
       }
 
       setEditingId(null)
-      setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', nilai: '', catatan_mentor: '' }))
+      setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', catatan_mentor: '' }))
       fetchRiwayat()
     } catch (err) {
       toast.error('Gagal memproses data')
@@ -195,7 +192,8 @@ export default function Tahfidz() {
         )}
 
         {/* Jika Mentee, penuhi layarnya (max-w-4xl mx-auto w-full), jika Mentor ambil 2 kolom */}
-        <div className={`${isMentee ? 'max-w-4xl mx-auto w-full' : 'lg:col-span-2'} space-y-8`}>
+       
+         <div className={`${isMentee ? 'w-full' : 'lg:col-span-2'} space-y-8`}>
           
           {/* 👇 SEMBUNYIKAN FORM INPUT JIKA YANG BUKA ADALAH MENTEE 👇 */}
           {!isMentee && (
@@ -226,23 +224,11 @@ export default function Tahfidz() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input label="Jilid Iqro'" placeholder="Iqro Jilid 1-6" value={form.materi_bacaan} onChange={e => setForm({...form, materi_bacaan: e.target.value})} required />
-                  <Input label="Halaman" placeholder="Halaman 10-15" value={form.rentang_bacaan} onChange={e => setForm({...form, rentang_bacaan: e.target.value})} required />
+                  <Input label="Surat" placeholder="Surat An-Naba" value={form.materi_bacaan} onChange={e => setForm({...form, materi_bacaan: e.target.value})} required />
+                  <Input label="Ayat" placeholder="Ayat 1-10" value={form.rentang_bacaan} onChange={e => setForm({...form, rentang_bacaan: e.target.value})} required />
                 </div>
 
-                <Input 
-                  label="Nilai (0-100)" 
-                  type="number" 
-                  value={form.nilai} 
-                  onChange={e => {
-                    let val = e.target.value;
-                    if (val !== "") {
-                      if (parseInt(val) < 0) val = "0";
-                      if (parseInt(val) > 100) val = "100";
-                    }
-                    setForm({...form, nilai: val})
-                  }} 
-                />
+                
 
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Catatan Progres</label>
@@ -274,7 +260,7 @@ export default function Tahfidz() {
                       {r.catatan_mentor && <p className="text-xs text-gray-500 mt-1 italic">"{r.catatan_mentor}"</p>}
                     </div>
                     <div className="flex items-center gap-4">
-                      <div className="text-xl font-black text-gray-900 mr-2">{r.nilai || '-'}</div>
+                     
                       
                       {/* 👇 SEMBUNYIKAN TOMBOL EDIT/HAPUS JIKA YANG BUKA ADALAH MENTEE 👇 */}
                       {!isMentee && (

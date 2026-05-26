@@ -205,9 +205,12 @@ export default function HalaqahManagement() {
                 <td className="px-4 py-3 text-gray-500 font-mono text-sm">
                   {Array.isArray(getMenteeNims(row.mentees)) && getMenteeNims(row.mentees).length > 0 ? (
                     <div className="flex flex-col gap-1">
-                      {getMenteeNims(row.mentees).map((nim, index) => (
-                        <span key={index} className="bg-gray-50 px-2 py-0.5 rounded border border-gray-100 w-fit">
-                          {nim}
+                      {getMenteeNims(row.mentees)?.map((mentee) => (
+                        <span
+                          key={mentee.id}
+                          className="bg-gray-50 px-2 py-0.5 rounded border border-gray-100 w-fit"
+                        >
+                          {mentee.nim}
                         </span>
                       ))}
                     </div>

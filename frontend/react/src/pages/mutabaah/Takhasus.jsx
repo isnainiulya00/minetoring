@@ -26,7 +26,7 @@ export default function Takhasus() {
     tanggal: new Date().toISOString().split('T')[0],
     materi_bacaan: '',
     rentang_bacaan: '',
-    nilai: '',
+    
     catatan_mentor: ''
   })
 
@@ -91,7 +91,7 @@ export default function Takhasus() {
       tanggal: riwayat.tanggal,
       materi_bacaan: riwayat.materi_bacaan,
       rentang_bacaan: riwayat.rentang_bacaan,
-      nilai: riwayat.nilai || '',
+  
       catatan_mentor: riwayat.catatan_mentor || ''
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -100,7 +100,7 @@ export default function Takhasus() {
 
   const cancelEdit = () => {
     setEditingId(null)
-    setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', nilai: '', catatan_mentor: '' }))
+    setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', catatan_mentor: '' }))
   }
 
   const handleDelete = async (id) => {
@@ -130,7 +130,6 @@ export default function Takhasus() {
       tanggal: form.tanggal,
       materi_bacaan: form.materi_bacaan,
       rentang_bacaan: form.rentang_bacaan,
-      nilai: form.nilai ? parseInt(form.nilai) : null,
       catatan_mentor: form.catatan_mentor
     }
 
@@ -148,7 +147,7 @@ export default function Takhasus() {
       }
 
       setEditingId(null)
-      setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', nilai: '', catatan_mentor: '' }))
+      setForm(prev => ({ ...prev, materi_bacaan: '', rentang_bacaan: '', catatan_mentor: '' }))
       fetchRiwayat()
     } catch (err) {
       toast.error('Gagal memproses data')
@@ -174,7 +173,7 @@ export default function Takhasus() {
       />
       
       {/* Ubah grid agar Mentee jadi 1 kolom (lebar penuh), Mentor 3 kolom */}
-      <div className={`mt-8 grid grid-cols-1 ${isMentee ? '' : 'lg:grid-cols-3'} gap-8`}>
+      <div className={`${isMentee ? 'w-full' : 'lg:col-span-2'} space-y-8`}>
         
         {/* 👇 SEMBUNYIKAN LIST MENTEE JIKA YANG BUKA ADALAH MENTEE 👇 */}
         {!isMentee && (
@@ -195,7 +194,7 @@ export default function Takhasus() {
         )}
 
         {/* Jika Mentee, penuhi layarnya (max-w-4xl mx-auto w-full), jika Mentor ambil 2 kolom */}
-        <div className={`${isMentee ? 'max-w-4xl mx-auto w-full' : 'lg:col-span-2'} space-y-8`}>
+        <div className={`${isMentee ? 'w-full' : 'lg:col-span-2'} space-y-8`}>
           
           {/* 👇 SEMBUNYIKAN FORM INPUT JIKA YANG BUKA ADALAH MENTEE 👇 */}
           {!isMentee && (
@@ -230,20 +229,7 @@ export default function Takhasus() {
                   <Input label="Halaman" placeholder="Halaman 10-15" value={form.rentang_bacaan} onChange={e => setForm({...form, rentang_bacaan: e.target.value})} required />
                 </div>
 
-                <Input 
-                  label="Nilai (0-100)" 
-                  type="number" 
-                  value={form.nilai} 
-                  onChange={e => {
-                    let val = e.target.value;
-                    if (val !== "") {
-                      if (parseInt(val) < 0) val = "0";
-                      if (parseInt(val) > 100) val = "100";
-                    }
-                    setForm({...form, nilai: val})
-                  }} 
-                />
-
+                
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Catatan Progres</label>
                   <textarea rows="3" className="w-full rounded-xl border border-gray-200 p-4 text-sm bg-white focus:ring-2 focus:ring-gray-900 focus:outline-none resize-none" placeholder="Catatan perkembangan..." value={form.catatan_mentor} onChange={e => setForm({...form, catatan_mentor: e.target.value})} />
@@ -270,11 +256,11 @@ export default function Takhasus() {
                         <span className="text-[10px] font-black text-white bg-gray-900 px-2 py-0.5 rounded">P-{r.pertemuan_ke}</span>
                         <span className="text-xs text-gray-400 font-medium">{r.tanggal}</span>
                       </div>
-                      <p className="text-sm font-bold text-gray-800">{r.materi_bacaan} <span className="text-gray-400 mx-2">•</span> {r.rentang_bacaan}</p>
+                      <p className="text-sm font-bold text-gray-800">Iqro' {r.materi_bacaan} <span className="text-gray-400 mx-2">•</span>Halaman {r.rentang_bacaan}</p>
                       {r.catatan_mentor && <p className="text-xs text-gray-500 mt-1 italic">"{r.catatan_mentor}"</p>}
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-xl font-black text-gray-900 mr-2">{r.nilai || '-'}</div>
+                    
+                     
                       
                       {/* 👇 SEMBUNYIKAN TOMBOL EDIT/HAPUS JIKA YANG BUKA ADALAH MENTEE 👇 */}
                       {!isMentee && (
@@ -298,7 +284,7 @@ export default function Takhasus() {
                       )}
 
                     </div>
-                  </div>
+               
                 ))
               ) : (
                 <div className="text-center py-10 text-gray-300 text-sm italic">Belum ada riwayat.</div>

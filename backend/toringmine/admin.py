@@ -63,52 +63,66 @@ class UserResource(resources.ModelResource):
     def after_save_instance(self, instance, use_create, **kwargs):
         super().after_save_instance(instance, use_create, **kwargs)
         
+        nama_halaqah_csv = getattr(instance, '_halaqah_sementara', '')
+        tingkat_csv = getattr(instance, '_tingkat_sementara', '')
+        prodi_csv = getattr(instance, '_prodi_sementara', '-')
+        
+        # 👇 SESUAIKAN DENGAN MODELS.PY KAMU 👇
+        # Jika di models.py pakai huruf besar semua, gunakan .upper()
+        # Jika di models.py pakai huruf kecil semua, ganti jadi .lower()
+        # Jika di models.py pakai "Tahsin", gunakan .capitalize()
+        tingkat_bersih = str(tingkat_csv).strip().upper() if tingkat_csv else 'TAHSIN'
+        if tingkat_bersih not in ['TAKHASUS', 'TAHSIN', 'TAHFIDZ']:
+            tingkat_bersih = 'TAHSIN'
+
+        # ------------------------------------------
+        # LOGIKA UNTUK PROFIL MENTEE
+        # ------------------------------------------
         if getattr(instance, 'role', '') == 'MENTEE':
-            
-            # 👇 2. AMBIL DATA DARI SAKU RAHASIA 👇
-            nama_halaqah_csv = getattr(instance, '_halaqah_sementara', '')
-            tingkat_csv = getattr(instance, '_tingkat_sementara', '')
-            prodi_csv = getattr(instance, '_prodi_sementara', '-')
-            
             objek_halaqah = None
-            
             if nama_halaqah_csv:
                 nama_bersih = str(nama_halaqah_csv).strip()
                 
-                # Cari kelompoknya di database
-                objek_halaqah = Halaqah.objects.filter(nama_kelompok__iexact=nama_bersih).first()
-                
-                # Auto-create kalau grup belum ada
-                if not objek_halaqah:
-                    tingkat_bersih = str(tingkat_csv).strip().upper() if tingkat_csv else 'TAHSIN'
-                    # Mencegah database error kalau ada typo tingkat di excel
-                    if tingkat_bersih not in ['TAKHASUS', 'TAHSIN', 'TAHFIDZ']:
-                        tingkat_bersih = 'TAHSIN'
-                        
-                    objek_halaqah = Halaqah.objects.create(
-                        nama_kelompok=nama_bersih,
-                        tingkat=tingkat_bersih
-                    )
+                # Gunakan update_or_create untuk memaksa TINGKAT terupdate!
+                objek_halaqah, created = Halaqah.objects.update_or_create(
+                    nama_kelompok__iexact=nama_bersih,
+                    defaults={
+                        'nama_kelompok': nama_bersih, # mengunci nama asli
+                        'tingkat': tingkat_bersih     # selalu paksa update tingkat dari CSV terbaru
+                    }
+                )
 
-            # Buat Profil Mentee
             Mentee.objects.update_or_create(
                 user=instance, 
                 defaults={
                     'nim': instance.nim,
                     'nama_lengkap': instance.first_name,
-                    # Karena di CSV-mu beneran belum ada prodi, biarkan defaultnya strip '-'
                     'prodi': str(prodi_csv).strip() if prodi_csv else '-', 
-                    'halaqah': objek_halaqah # SEKARANG PASTI TERISI!
+                    'halaqah': objek_halaqah
                 }
             )
             
+        # ------------------------------------------
+        # LOGIKA UNTUK PROFIL MENTOR
+        # ------------------------------------------
         elif getattr(instance, 'role', '') == 'MENTOR':
-            Mentor.objects.update_or_create(
+            mentor_obj, created = Mentor.objects.update_or_create(
                 user=instance, 
-                defaults={
-                    'nama_lengkap': instance.first_name,
-                }
+                defaults={'nama_lengkap': instance.first_name}
             )
+            
+            if nama_halaqah_csv:
+                nama_bersih = str(nama_halaqah_csv).strip()
+                
+                # Paksa update juga di bagian mentor
+                Halaqah.objects.update_or_create(
+                    nama_kelompok__iexact=nama_bersih,
+                    defaults={
+                        'nama_kelompok': nama_bersih,
+                        'tingkat': tingkat_bersih,
+                        'mentor': mentor_obj
+                    }
+                )
 # =====
 # 1. Manajemen User
 # ==========================================
@@ -202,7 +216,7 @@ class ResumeAdmin(admin.ModelAdmin):
 
 @admin.register(Mutabaah)
 class MutabaahAdmin(admin.ModelAdmin):
-    list_display = ('mentee', 'materi_bacaan', 'rentang_bacaan', 'nilai', 'tanggal')
+    list_display = ('mentee', 'materi_bacaan', 'rentang_bacaan', 'tanggal')
     list_filter = ('tanggal',)
 
 @admin.register(Sertifikat)
