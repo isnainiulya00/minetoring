@@ -180,11 +180,24 @@ export default function HalaqahManagement() {
       <PageHeader
         title="Manajemen Kelompok Halaqah"
         subtitle="Kelola pembagian kelompok mentoring mahasiswa"
-        action={<Button onClick={() => handleOpenModal()}>Tambah Halaqah</Button>}
+        
       />
+      {/* SEARCH BAR & TOMBOL TAMBAH SEJAJAR KIRI - KANAN */}
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="w-full sm:w-auto flex-1">
+          <SearchBar 
+            value={search} 
+            onChange={setSearch} 
+            placeholder="Cari halaqah..." 
+            className="w-full max-w-md m-0" 
+          />
+        </div>
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto h-fit">
+          Tambah Halaqah
+        </Button>
+      </div>
 
-      <SearchBar value={search} onChange={setSearch} placeholder="Cari nama kelompok..." className="mb-6 max-w-md" />
-
+      {/* PENGECEKAN LOADING & TABEL (Jangan sampai hilang!) */}
       {loading ? <TableSkeleton /> : (
         <>
           <Table
@@ -207,10 +220,10 @@ export default function HalaqahManagement() {
                     <div className="flex flex-col gap-1">
                       {getMenteeNims(row.mentees)?.map((mentee) => (
                         <span
-                          key={mentee.id}
+                          key={mentee.id || mentee} // Antisipasi kalau format datanya beda
                           className="bg-gray-50 px-2 py-0.5 rounded border border-gray-100 w-fit"
                         >
-                          {mentee.nim}
+                          {mentee.nim || mentee}
                         </span>
                       ))}
                     </div>
@@ -231,7 +244,6 @@ export default function HalaqahManagement() {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
-
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editingId ? 'Edit Kelompok Halaqah' : 'Tambah Kelompok Halaqah'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           

@@ -4,6 +4,6 @@ export const analyticsService = {
   overview: () => api.get('/api/analytics/overview/').then((r) => r.data),
   rekapHalaqah: (semester) =>
     api
-      .get('/api/rekap/halaqah/', { params: semester ? { semester } : {} })
+      .get('/api/halaqah/', { params: semester ? { semester } : {} })
       .then((r) => r.data),
 }

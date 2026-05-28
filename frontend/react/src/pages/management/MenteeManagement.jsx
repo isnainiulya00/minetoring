@@ -15,7 +15,7 @@ import { halaqahService } from '../../services/halaqahService'
 
 const PAGE_SIZE = 8
 
-export default function MenteeManagement() {
+export default function MenteeManagement({ isHubMode }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const debounced = useDebounce(search)
@@ -92,7 +92,7 @@ export default function MenteeManagement() {
 
   return (
     <>
-      <PageHeader title="Manajemen Data Mentee" subtitle="Pantau dan kelola data mahasiswa peserta mentoring" />
+      
       <SearchBar value={search} onChange={setSearch} placeholder="Cari nama atau NIM mentee..." className="mb-6 max-w-md" />
 
       {loading ? <TableSkeleton /> : (

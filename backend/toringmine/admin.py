@@ -1,6 +1,6 @@
 from django.contrib import admin
-from import_export import widgets
 from import_export.admin import ImportExportModelAdmin
+from import_export.widgets import Widget, ForeignKeyWidget
 from import_export import resources, fields
 from import_export.widgets import Widget
 from .models import (
@@ -219,7 +219,23 @@ class MutabaahAdmin(admin.ModelAdmin):
     list_display = ('mentee', 'materi_bacaan', 'rentang_bacaan', 'tanggal')
     list_filter = ('tanggal',)
 
+class SertifikatResource(resources.ModelResource):
+    user = fields.Field(
+        column_name='nim',
+        attribute='user',
+        widget=ForeignKeyWidget(User, 'nim')
+    )
+
+    class Meta:
+        model = Sertifikat
+        # 👇 nomor_sertifikat dihapus dari fields
+        fields = ('id', 'user', 'sebagai', 'link_sertifikat')
+        import_id_fields = ('user',) 
+
 @admin.register(Sertifikat)
-class SertifikatAdmin(admin.ModelAdmin):
-    list_display = ('user', 'sebagai', 'nomor_sertifikat', 'tanggal_terbit')
+class SertifikatAdmin(ImportExportModelAdmin):
+    resource_class = SertifikatResource
+    # 👇 nomor_sertifikat dihapus dari list_display dan search_fields
+    list_display = ('user', 'sebagai', 'tanggal_terbit')
     list_filter = ('sebagai',)
+    search_fields = ('user__nim', 'user__first_name')

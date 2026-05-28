@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import PageHeader from '../../components/common/PageHeader'
 import SearchBar from '../../components/common/SearchBar'
 import Table, { Pagination } from '../../components/common/Table'
 import Badge from '../../components/common/Badge'
@@ -102,13 +101,11 @@ export default function UserManagement() {
         
         // Cek apakah error berbentuk JSON Object dari Django
         if (typeof errorData === 'object' && !Array.isArray(errorData)) {
-          // Ambil kunci error pertama (misal: 'nim' atau 'email')
           const firstKey = Object.keys(errorData)[0];
           const firstMessage = Array.isArray(errorData[firstKey]) 
             ? errorData[firstKey][0] 
             : errorData[firstKey];
             
-          // Tampilkan Alert Merah yang cantik
           toast.error(`Peringatan: ${firstMessage}`);
         } else {
           toast.error('Gagal menyimpan. Periksa kembali inputan Anda.');
@@ -144,13 +141,20 @@ export default function UserManagement() {
 
   return (
     <>
-      <PageHeader
-        title="Manajemen Pengguna (User)"
-        subtitle="Kelola data akun mahasiswa, mentor, dan pengurus KMF"
-        action={<Button onClick={() => handleOpenModal()}>Tambah User</Button>}
-      />
-
-      <SearchBar value={search} onChange={setSearch} placeholder="Cari berdasarkan Nama atau NIM..." className="mb-6 max-w-md" />
+      {/* KODINGAN BARU: SEJAJAR KIRI - KANAN */}
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="w-full sm:w-auto flex-1">
+          <SearchBar 
+            value={search} 
+            onChange={setSearch} 
+            placeholder="Cari akun user..." 
+            className="w-full max-w-md m-0" 
+          />
+        </div>
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto h-fit">
+          Tambah User
+        </Button>
+      </div>
 
       {loading ? <TableSkeleton /> : (
         <>

@@ -20,6 +20,7 @@ import MentorDashboard from '../pages/dashboard/MentorDashboard'
 import MenteeDashboard from '../pages/dashboard/MenteeDashboard'
 
 import UserManagement from '../pages/management/UserManagement'
+import UserHub from '../pages/management/UserHub'
 import MentorManagement from '../pages/management/MentorManagement'
 import MenteeManagement from '../pages/management/MenteeManagement'
 import HalaqahManagement from '../pages/management/HalaqahManagement'
@@ -70,12 +71,13 @@ export default function AppRoutes() {
       
         <Route path="/settings" element={<Settings />} />
 
-        {/* ─── FITUR GLOBAL (Bisa diakses KMF, Mentor, Mentee) ─── */}
-        <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE]} />}>
+        {/* ─── FITUR GLOBAL (Bisa diakses KMF, Mentor, Mentee, lppik) ─── */}
+        <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE, ROLES.ADMIN]} />}>
           <Route path="/informasi" element={<InformasiList />} />
           <Route path="/jadwal" element={<Jadwal />} />
           <Route path="/halaqah" element={<HalaqahList />} />
           <Route path="/halaqah/:id" element={<HalaqahDetail />} />
+          <Route path="/sertifikat" element={<Sertifikat />} />
           
           {/* 👇 INI RUTE MUTABAAH UNTUK SEMUA ROLE 👇 */}
           <Route path="/mutabaah" element={<MutabaahRouter />}>
@@ -94,17 +96,15 @@ export default function AppRoutes() {
         {/* 1. KHUSUS KMF (Super Admin) */}
         <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF]} />}>
           <Route path="/dashboard/kmf" element={<KMFDashboard />} />
-          <Route path="/management/users" element={<UserManagement />} />
-          <Route path="/management/mentors" element={<MentorManagement />} />
-          <Route path="/management/mentees" element={<MenteeManagement />} />
+          <Route path="/management/users" element={<UserHub />} />
           <Route path="/management/halaqah" element={<HalaqahManagement />} />
           <Route path="/presensi/mentor" element={<PresensiMentor />} />
           <Route path="/informasi/create" element={<InformasiForm />} />
           <Route path="/informasi/edit/:id" element={<InformasiForm />} />
         </Route>
 
-        {/* 2. REKAP GLOBAL (KMF & LPPIK) */}
-        <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF, ROLES.LPPIK]} />}>
+        {/* 2. REKAP GLOBAL (KMF & ADMIN) */}
+        <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF, ROLES.ADMIN]} />}>
           <Route path="/dashboard/lppik" element={<LPPIKDashboard />} />
           <Route path="/halaqah/rekap" element={<HalaqahRekap />} />
           <Route path="/presensi/rekap" element={<RekapPresensi />} />

@@ -11,7 +11,7 @@ import { mentorService } from '../../services/mentorService'
 
 const PAGE_SIZE = 8
 
-export default function MentorManagement() {
+export default function MentorManagement({ isHubMode }) {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const debounced = useDebounce(search)
@@ -48,7 +48,7 @@ export default function MentorManagement() {
 
   return (
     <>
-      <PageHeader title="Manajemen Data Mentor" subtitle="Pantau dan kelola data mentor aktif" />
+      
       
       <SearchBar 
         value={search} 

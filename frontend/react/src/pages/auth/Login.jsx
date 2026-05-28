@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
+// 👇 1. Tambahkan useNavigate di sini
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { HiOutlineLockClosed } from 'react-icons/hi2'
@@ -14,6 +15,7 @@ export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' })
   
   const location = useLocation()
+  const navigate = useNavigate() // 👇 2. Inisialisasi navigate
   const login = useAuthStore((s) => s.login)
 
   const handleSubmit = async (e) => {
@@ -22,17 +24,17 @@ export default function Login() {
     setLoading(true)
 
     try {
-      // 1. Eksekusi login via state management (Zustand/Store)
+      // 1. Eksekusi login via state management
       const result = await login(form.username, form.password)
       
       toast.success('Selamat datang kembali!')
       
-      // 2. Tentukan rute tujuan berdasarkan role user (KMF, MENTOR, atau MENTEE)
+      // 2. Tentukan rute tujuan 
       const targetPath = getLoginRedirectPath(result?.user)
-      // 3. 🔥 HARD RELOAD 🔥
-      // Memaksa browser mereset state dan langsung menggunakan token baru
-      // window.location.replace mencegah user kembali (back) ke halaman login
-      window.location.replace(targetPath)
+      
+      // 👇 3. GANTI JADI NAVIGATE REACT ROUTER (Sangat Penting!) 👇
+      // replace: true gunanya biar user nggak bisa klik tombol "Back" ke halaman login
+      navigate(targetPath, { replace: true })
       
     } catch (error) {
       if (error.response) {

@@ -237,14 +237,14 @@ class Mutabaah(models.Model):
 
 
 class Sertifikat(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sertifikat_user')
-    nomor_sertifikat = models.CharField(max_length=100, unique=True)
-    sebagai = models.CharField(max_length=20, choices=[('MENTOR', 'Mentor'), ('MENTEE', 'Mentee')])
-    link_drive = models.URLField(max_length=500)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sertifikat_ku')
+    sebagai = models.CharField(max_length=20, choices=[('MENTEE', 'Mentee'), ('MENTOR', 'Mentor')])
+    
+    link_sertifikat = models.URLField(max_length=1000,null=True, blank=True) 
     tanggal_terbit = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"Sertifikat {self.sebagai} - {self.user.username}"
+        return f"Sertifikat {self.user.username} - {self.sebagai}"
     
 
 @receiver(post_save, sender=User)

@@ -33,7 +33,7 @@ export const canGradeResume = (user) => isMentor(user)
 export function getDashboardPath(user) {
   if (!user) return '/dashboard'
   switch (user.role) {
-    case ROLES.LPPIK: return '/dashboard/lppik'
+    case ROLES.ADMIN: return '/dashboard/lppik'
     case ROLES.KMF: return '/dashboard/kmf'
     case ROLES.MENTOR: return '/dashboard/mentor'
     case ROLES.MENTEE: return '/dashboard/mentee'
@@ -83,12 +83,16 @@ export function getNavItems(user) {
   if (!user) return []
 
   switch (user.role) {
-    case ROLES.LPPIK:
+    case ROLES.ADMIN:
       return [
         { path: '/dashboard/lppik', label: 'Dashboard', icon: 'dashboard' },
         { path: '/halaqah/rekap', label: 'Rekap Halaqah', icon: 'halaqah' },
         { path: '/presensi/rekap', label: 'Rekap Presensi', icon: 'presensi' },
+        { path: "/rekap/mutabaah", label: "Rekap Mutabaah", icon: "mutabaah" },
+        { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
+        { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
+     
         
       ]
 
@@ -96,15 +100,14 @@ export function getNavItems(user) {
       return [
         { path: '/dashboard/kmf', label: 'Dashboard', icon: 'dashboard' },
         { path: '/management/users', label: 'Data User', icon: 'users' },
-        { path: '/management/mentors', label: 'Data Mentor', icon: 'mentor' }, 
-        { path: '/management/mentees', label: 'Data Mentee', icon: 'mentee' }, 
+
         { path: '/management/halaqah', label: 'Kelola Halaqah', icon: 'halaqah' }, // <-- Cukup satu ini saja
-        { path: '/presensi/mentor', label: 'Presensi Mentor', icon: 'presensi' },
-        { path: '/presensi/mentee', label: 'Presensi Mentee', icon: 'presensi' }, 
+        { path: '/presensi/rekap', label: 'Rekap Presensi', icon: 'presensi' },
+        
         { path: "/rekap/mutabaah", label: "Rekap Mutabaah", icon: "mutabaah" },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        
+        { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
       ]
 
     case ROLES.MENTOR:
@@ -116,7 +119,7 @@ export function getNavItems(user) {
         { path: '/resume/review', label: 'Review Resume', icon: 'resume' },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' }, // Ubah labelnya biar jelas
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-       
+       { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
       ]
 
     default: // MENTEE
@@ -127,7 +130,7 @@ export function getNavItems(user) {
         { path: '/resume/upload', label: 'Upload Resume', icon: 'resume' },
         { path: '/mutabaah/tahsin', label: 'Mutabaah', icon: 'mutabaah' }, 
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
-        
+        { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
       ]
   }
 }

@@ -3,9 +3,11 @@ import axios from 'axios'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
 import { HiOutlineDocumentDownload, HiOutlineSearch, HiOutlineFilter } from 'react-icons/hi'
+import { useAuthStore } from '../../store/authStore'
 
 export default function RekapMutabaah() {
   const [dataRekap, setDataRekap] = useState([])
+  const [listJadwal, setListJadwal] = useState([]) // 👇 State baru untuk data Jadwal
   const [loading, setLoading] = useState(true)
   
   // State untuk Filter & Pencarian
@@ -16,34 +18,45 @@ export default function RekapMutabaah() {
 
   const accessToken = localStorage.getItem('mine_toring_access')
 
-  // 1. Tarik Data dari Backend
+  // Cek Role User (KMF atau bukan)
+  const user = useAuthStore((state) => state.user)
+  const isKMF = user?.role?.toUpperCase() === 'KMF' || user?.role?.toUpperCase() === 'KOORDINATOR'
+
+  // 1. Tarik Data Mutabaah DAN Jadwal dari Backend Sekaligus
   useEffect(() => {
-    const fetchGlobalMutabaah = async () => {
+    const fetchGlobalData = async () => {
+      setLoading(true)
       try {
-        const res = await axios.get('http://localhost:8000/api/mutabaahs/', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        })
-        const data = Array.isArray(res.data) ? res.data : (res.data.results || [])
-        setDataRekap(data)
+        const [resMutabaah, resJadwal] = await Promise.all([
+          axios.get('http://localhost:8000/api/mutabaahs/', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          }),
+          axios.get('http://localhost:8000/api/jadwal/', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          })
+        ])
+        
+        const mutabaahData = Array.isArray(resMutabaah.data) ? resMutabaah.data : (resMutabaah.data.results || [])
+        setDataRekap(mutabaahData)
+
+        const jadwalData = Array.isArray(resJadwal.data) ? resJadwal.data : (resJadwal.data.results || [])
+        // Sortir jadwal berdasarkan pertemuan ke-
+        setListJadwal(jadwalData.sort((a, b) => a.pertemuan_ke - b.pertemuan_ke))
+
       } catch (err) {
-        toast.error("Gagal memuat data rekap mutabaah")
+        toast.error("Gagal memuat data dari server")
         console.error("Error Fetch:", err)
       } finally {
         setLoading(false)
       }
     }
-    fetchGlobalMutabaah()
+    fetchGlobalData()
   }, [accessToken])
 
-  // 2. Ambil List Unik untuk Dropdown (Halaqah & Pertemuan)
+  // 2. Ambil List Unik untuk Dropdown (Halaqah saja, Pertemuan sekarang dari API Jadwal)
   const listHalaqahUnik = useMemo(() => {
     const setHalaqah = new Set(dataRekap.map(item => item.nama_halaqah || 'Tanpa Kelompok'))
     return ['ALL', ...Array.from(setHalaqah)]
-  }, [dataRekap])
-
-  const listPertemuanUnik = useMemo(() => {
-    const setPertemuan = new Set(dataRekap.map(item => item.pertemuan_ke).filter(Boolean))
-    return ['ALL', ...Array.from(setPertemuan).sort((a, b) => a - b)]
   }, [dataRekap])
 
   // 3. Logika Filter Data (Search + 3 Dropdown)
@@ -83,11 +96,9 @@ export default function RekapMutabaah() {
       return
     }
 
-    // Tambah kolom catatan di Excel
-    let csvContent = "No,Nama Mentee,NIM,Tingkat,Halaqah,Materi Bacaan,Rentang Halaman,Catatan\n"
+    let csvContent = "No,Nama Mentee,NIM,Tingkat,Halaqah,Pertemuan,Materi Bacaan,Rentang Halaman,Catatan\n"
     
     dataTerfilter.forEach((r, index) => {
-      // Bersihkan enter atau koma di dalam catatan biar Excel nggak berantakan
       const cleanCatatan = (r.catatan_mentor || '-').replace(/"/g, '""').replace(/\n/g, ' ')
       
       const baris = [
@@ -96,6 +107,7 @@ export default function RekapMutabaah() {
         `"${r.nim_mentee || '-'}"`,
         `"${r.tingkat || '-'}"`,
         `"${r.nama_halaqah || '-'}"`,
+        `"Pertemuan ${r.pertemuan_ke || '-'}"`,
         `"${r.materi_bacaan || '-'}"`,
         `"${r.rentang_bacaan || '-'}"`,
         `"${cleanCatatan}"`
@@ -114,28 +126,30 @@ export default function RekapMutabaah() {
     toast.success("Berhasil mendownload laporan Excel!")
   }
 
-  if (loading) return <div className="p-10 text-gray-400">Membuat Rekapan Global...</div>
+  if (loading) return <div className="p-10 text-center font-medium text-gray-500 animate-pulse">Menarik Data Global...</div>
 
   return (
     <div className="max-w-7xl mx-auto pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <PageHeader title="Rekapitulasi Mutabaah" subtitle="Pantau progres capaian Al-Quran seluruh mahasiswa" />
-        <button 
-          onClick={handleExportExcel}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-        >
-          <HiOutlineDocumentDownload className="text-xl" />
-          Export ke Excel
-        </button>
-      </div>
+        
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          
+          <div className="flex items-center gap-2 bg-white border border-gray-100 px-5 py-3 rounded-2xl shadow-sm">
+            <span className="text-gray-500 text-sm font-medium">Total:</span>
+            <span className="text-gray-900 text-base font-black">{dataTerfilter.length}</span>
+            <span className="text-gray-400 text-sm font-medium">Mutabaah</span>
+          </div>
 
-      {/* KPI Card */}
-      <div className="mt-8">
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm inline-block min-w-[250px]">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Total Data Input</p>
-          <p className="text-3xl font-black text-gray-900 mt-2">
-            {dataTerfilter.length} <span className="text-sm font-medium text-gray-400">Setoran</span>
-          </p>
+          {isKMF && (
+            <button 
+              onClick={handleExportExcel}
+              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
+            >
+              <HiOutlineDocumentDownload className="text-xl" />
+              Export ke Excel
+            </button>
+          )}
         </div>
       </div>
 
@@ -165,14 +179,17 @@ export default function RekapMutabaah() {
             <option value="TAHFIDZ">Tahfidz</option>
           </select>
 
+          {/* 👇 SEKARANG PAKAI LIST JADWAL DARI DATABASE KMF 👇 */}
           <select 
             value={selectedPertemuan} 
             onChange={e => setSelectedPertemuan(e.target.value)}
-            className="flex-1 md:w-40 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
+            className="flex-1 md:w-48 bg-gray-50 border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-gray-950"
           >
             <option value="ALL">Pertemuan (Semua)</option>
-            {listPertemuanUnik.filter(p => p !== 'ALL').map((p, idx) => (
-              <option key={idx} value={p}>Pertemuan {p}</option>
+            {listJadwal.map((j) => (
+              <option key={j.id} value={j.pertemuan_ke}>
+                Pertemuan {j.pertemuan_ke} {j.topik ? `— ${j.topik}` : ''}
+              </option>
             ))}
           </select>
 
@@ -196,7 +213,7 @@ export default function RekapMutabaah() {
               <tr className="bg-gray-50 border-b border-gray-100 text-gray-500 text-xs uppercase tracking-wider">
                 <th className="py-4 px-6 font-semibold min-w-[200px]">Mentee</th>
                 <th className="py-4 px-6 font-semibold text-center">Tingkat</th>
-                <th className="py-4 px-6 font-semibold">Halaqah</th>
+                <th className="py-4 px-6 font-semibold">Halaqah & Pertemuan</th>
                 <th className="py-4 px-6 font-semibold min-w-[300px]">Detail Mutabaah</th>
               </tr>
             </thead>
@@ -228,31 +245,26 @@ export default function RekapMutabaah() {
                         </span>
                       </td>
 
-                      <td className="py-4 px-6 font-semibold text-gray-700">
-                        {row.nama_halaqah}
+                      <td className="py-4 px-6">
+                        <p className="font-semibold text-gray-700">{row.nama_halaqah}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Pertemuan ke-{row.pertemuan_ke || '-'}</p>
                       </td>
 
-                      {/* Tampilan Isi Mutabaah Baru: Bersih dan Langsung */}
-                      {/* Tampilan Isi Mutabaah Baru: Bersih dan Langsung */}
                       <td className="py-4 px-6">
                         <div className="flex flex-col gap-1.5">
                           <p className="text-sm font-bold text-gray-900">
-                            
-                            {/* 👇 LOGIKA IQRO-NYA PINDAH KE SINI 👇 */}
                             {tingkatLabel.toUpperCase() === 'TAKHASUS' 
                               ? `Iqro' ${row.materi_bacaan || '-'}` 
                               : row.materi_bacaan || '-'} 
                               
                             <span className="text-gray-300 font-normal mx-2">|</span> 
                             
-                            {/* Tambahkan kata 'Jilid' atau 'Ayat' biar makin jelas */}
                             <span className="text-gray-600 font-medium">
                               {tingkatLabel.toUpperCase() === 'TAKHASUS' ? 'Hal. ' : 'Ayat '} 
                               {row.rentang_bacaan || '-'}
                             </span>
                           </p>
                           
-                          {/* 👇 CATATAN MENTOR KEMBALI KE FUNGSI ASLINYA 👇 */}
                           {row.catatan_mentor && row.catatan_mentor.trim() !== '' && (
                             <p className="text-[11px] text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 italic leading-relaxed mt-1">
                               "{row.catatan_mentor}"

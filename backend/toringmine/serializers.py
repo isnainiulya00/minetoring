@@ -417,10 +417,40 @@ class InformasiKegiatanSerializer(serializers.ModelSerializer):
             'pembuat'
         ]
 
+from .models import Sertifikat, Mentee # Pastikan Mentee ke-import kalau belum
+
 class SertifikatSerializer(serializers.ModelSerializer):
+    nim = serializers.CharField(source='user.nim', read_only=True)
+    nama_lengkap = serializers.CharField(source='user.first_name', read_only=True)
+    nama_halaqah = serializers.SerializerMethodField()
+    tingkat = serializers.SerializerMethodField()
+
     class Meta:
         model = Sertifikat
-        fields = '__all__'
+        fields = ['id', 'user', 'nim', 'nama_lengkap', 'sebagai', 'link_sertifikat', 'tanggal_terbit', 'nama_halaqah', 'tingkat']
+
+    def get_nama_halaqah(self, obj):
+        # Kebal terhadap huruf besar/kecil dari Excel
+        role = str(obj.sebagai).upper() 
+        
+        if role == 'MENTEE':
+            mentee = Mentee.objects.filter(user=obj.user).first()
+            return mentee.halaqah.nama_kelompok if mentee and mentee.halaqah else "-"
+            
+        elif role == 'MENTOR':
+            mentor = Mentor.objects.filter(user=obj.user).first()
+            if mentor:
+                # Cari halaqah yang dipegang sama mentor ini
+                halaqah = Halaqah.objects.filter(mentor=mentor).first()
+                return halaqah.nama_kelompok if halaqah else "-"
+        return "-"
+
+    def get_tingkat(self, obj):
+        role = str(obj.sebagai).upper()
+        if role == 'MENTEE':
+            mentee = Mentee.objects.filter(user=obj.user).first()
+            return mentee.halaqah.tingkat if mentee and mentee.halaqah else "-"
+        return "-"
 
 
 # ==========================================
@@ -446,6 +476,8 @@ class HalaqahRekapSerializer(serializers.Serializer):
     
    
     mutabaah_total = serializers.IntegerField()
+
+
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):

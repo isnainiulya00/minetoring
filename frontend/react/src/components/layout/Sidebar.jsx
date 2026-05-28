@@ -23,6 +23,13 @@ import {
 import { getNavItems } from '../../utils/roleHelpers'
 import { useAuthStore } from '../../store/authStore'
 
+// ===============================
+// IMPORT LOGO (Sesuaikan Ekstensi Filenya)
+// ===============================
+import minetoringLogo from '../../assets/minetoring-logo.jpeg' 
+import umsDark from '../../assets/ums-dark.png'
+import lppikDark from '../../assets/lppik.png' // Sesuai file aslimu
+import kmfLogo from '../../assets/kmf.png'
 
 // ===============================
 // ICON MAPPING
@@ -50,7 +57,6 @@ const iconMap = {
   settings: HiOutlineCog6Tooth,
 }
 
-
 export default function Sidebar({
   collapsed,
   onToggle,
@@ -63,9 +69,7 @@ export default function Sidebar({
   // ===============================
 
   const user = useAuthStore((s) => s.user)
-
   const navItems = getNavItems(user)
-
 
   // ===============================
   // SIDEBAR CONTENT
@@ -85,41 +89,38 @@ export default function Sidebar({
     >
 
       {/* ==========================
-          LOGO
+          LOGO UTAMA (ATAS)
       =========================== */}
 
       <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-4">
-
-        <div className="
-          flex h-9 w-9 shrink-0
-          items-center justify-center
-          rounded-xl
-          bg-gray-900
-          text-xs font-bold text-white
-        ">
-          MT
-        </div>
+        
+        <img 
+          src={minetoringLogo} 
+          alt="Mine-Toring" 
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl object-cover border border-gray-100 shadow-sm"
+        />
 
         {!collapsed && (
           <div className="min-w-0">
-
             <p className="
               truncate
               font-display
               text-sm
-              font-bold
+              font-black
+              text-gray-900
             ">
               MINE-TORING
             </p>
-
             <p className="
               truncate
               text-[10px]
-              text-gray-500
+              font-bold
+              text-gray-400
+              uppercase
+              tracking-wider
             ">
               Mentoring AIK
             </p>
-
           </div>
         )}
 
@@ -180,6 +181,25 @@ export default function Sidebar({
 
       </nav>
 
+      {/* ==========================
+          SUPPORTED BY (TANPA ABU-ABU)
+      =========================== */}
+      
+      {!collapsed && (
+        <div className="px-3 pb-2">
+          <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center mb-4">
+              Supported By
+            </p>
+            <div className="flex items-center justify-center gap-4">
+              <img src={umsDark} alt="UMS" className="h-6 w-auto object-contain transition-transform duration-300 hover:scale-110" />
+              <img src={lppikDark} alt="LPPIK" className="h-6 w-auto object-contain transition-transform duration-300 hover:scale-110" />
+              <img src={kmfLogo} alt="KMF" className="h-6 w-auto object-contain rounded-full transition-transform duration-300 hover:scale-110" />
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ==========================
           COLLAPSE BUTTON
@@ -192,20 +212,20 @@ export default function Sidebar({
           hidden lg:flex
           items-center justify-center gap-2
 
-          m-3 py-2
+          m-3 mt-1 py-2
 
           rounded-2xl
           border border-gray-200
 
-          text-sm text-gray-600
+          text-sm text-gray-600 font-bold
 
           hover:bg-gray-50
         "
       >
 
         {collapsed
-          ? <HiOutlineChevronRight/>
-          : <HiOutlineChevronLeft/>
+          ? <HiOutlineChevronRight className="text-lg"/>
+          : <HiOutlineChevronLeft className="text-lg"/>
         }
 
         {!collapsed && (

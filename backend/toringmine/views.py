@@ -4,6 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from django.db.models import Q
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from .models import (
     User, Koordinator, Mentor, Halaqah, Mentee, 
@@ -303,3 +305,39 @@ class SertifikatViewSet(viewsets.ModelViewSet):
         if user.role in ['MENTEE', 'MENTOR']:
             return Sertifikat.objects.filter(user=user)
         return Sertifikat.objects.all()
+    @action(detail=False, methods=['post'], permission_classes=[permissions.IsAdminUser])
+    def add_user_sertifikat(self, request):
+        user_id = request.data.get('user_id')
+        role_sebagai = request.data.get('sebagai')
+        link_drive = request.data.get('link_sertifikat')
+
+        try:
+            user_obj = User.objects.get(id=user_id)
+            Sertifikat.objects.create(
+                user=user_obj,
+                sebagai=role_sebagai,
+                link_sertifikat=link_drive
+            )
+            return Response({'status': 'Sertifikat berhasil ditambahkan!'}, status=status.HTTP_201_CREATED)
+        except User.DoesNotExist:
+            return Response({'status': 'User tidak ditemukan.'}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard_summary(request):
+    # Cek apakah yang minta data ini adalah KMF atau ADMIN (LPPIK)
+    user_role = request.user.role.upper()
+    if user_role not in ['KMF', 'KOORDINATOR', 'ADMIN']:
+        return Response({'detail': 'Akses ditolak.'}, status=status.HTTP_403_FORBIDDEN)
+
+    # Hitung total data dari database
+    total_mentee = Mentee.objects.count()
+    total_mentor = Mentor.objects.count()
+    total_halaqah = Halaqah.objects.count()
+
+    # Kirim datanya dalam bentuk JSON ke React
+    return Response({
+        'total_mentee': total_mentee,
+        'total_mentor': total_mentor,
+        'total_halaqah': total_halaqah
+    })

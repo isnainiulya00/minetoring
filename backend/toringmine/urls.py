@@ -1,10 +1,12 @@
+# Hapus "from django import views" biar tidak bentrok
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, MentorViewSet, MenteeViewSet, HalaqahViewSet,
     JadwalViewSet, JurnalPertemuanViewSet,
     PresensiViewSet, ResumeViewSet, MutabaahViewSet, 
-    InformasiKegiatanViewSet, SertifikatViewSet, TambahUserKMFView
+    InformasiKegiatanViewSet, SertifikatViewSet, TambahUserKMFView, 
+    dashboard_summary # 👈 Ini sudah di-import langsung
 )
 
 # Menggunakan DefaultRouter dari DRF untuk membuat rute otomatis (GET, POST, PUT, DELETE)
@@ -27,4 +29,7 @@ urlpatterns = [
     
     # Endpoint khusus untuk KMF menambah user via form manual
     path('kmf/tambah-user/', TambahUserKMFView.as_view(), name='kmf-tambah-user'),
+    
+    # 👇 Langsung panggil nama fungsinya, tanpa "views." 👇
+    path('dashboard/kmf-summary/', dashboard_summary, name='dashboard-summary'),
 ]

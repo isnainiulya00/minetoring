@@ -11,6 +11,7 @@ import { ROLE_LABELS } from '../../utils/constants'
 import { getInitials } from '../../utils/formatters'
 
 import Button from '../common/Button'
+import { Link } from 'react-router-dom'
 
 export default function Navbar({ onMenuClick }) {
 
@@ -113,36 +114,29 @@ export default function Navbar({ onMenuClick }) {
 
         {/* Notification */}
 
-        <button
-          type="button"
+       <Link
+          to="/informasi"
           className="
-          relative
-
-          rounded-xl
-          p-2
-
-          text-gray-500
-          hover:bg-gray-100
-        "
+            relative
+            rounded-xl
+            p-2
+            text-gray-500
+            hover:bg-gray-100
+          "
         >
-
-          <HiOutlineBell
-            className="h-5 w-5"
-          />
+          <HiOutlineBell className="h-5 w-5" />
 
           <span
             className="
-            absolute
-            right-1.5
-            top-1.5
-
-            h-2 w-2
-            rounded-full
-            bg-gray-400
-          "
+              absolute
+              right-1.5
+              top-1.5
+              h-2 w-2
+              rounded-full
+              bg-gray-400
+            "
           />
-
-        </button>
+        </Link>
 
 
         {/* Profile */}
