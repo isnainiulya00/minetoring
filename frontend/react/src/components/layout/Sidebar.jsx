@@ -26,7 +26,7 @@ import { useAuthStore } from '../../store/authStore'
 // ===============================
 // IMPORT LOGO (Sesuaikan Ekstensi Filenya)
 // ===============================
-import minetoringLogo from '../../assets/minetoring-logo.jpeg' 
+import minetoringLogo from '../../assets/2.jpeg' 
 import umsDark from '../../assets/ums-dark.png'
 import lppikDark from '../../assets/lppik.png' // Sesuai file aslimu
 import kmfLogo from '../../assets/kmf.png'
@@ -92,12 +92,12 @@ export default function Sidebar({
           LOGO UTAMA (ATAS)
       =========================== */}
 
-      <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-4">
+      <div className="flex h-16 items-center gap-4 border-b border-gray-100 px-5">
         
         <img 
           src={minetoringLogo} 
           alt="Mine-Toring" 
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl object-cover border border-gray-100 shadow-sm"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl object-cover border border-gray-100 shadow-sm"
         />
 
         {!collapsed && (

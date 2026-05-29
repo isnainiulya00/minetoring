@@ -25,7 +25,7 @@ export default function MentorDashboard() {
     },
     {
       title: 'Update Mutabaah',
-      desc: 'Pantau dan catat perkembangan ibadah serta hafalan mentee.',
+      desc: 'Pantau dan catat perkembangan mutabaah mentee.',
       icon: HiOutlineDocumentText,
       link: '/mutabaah',
       color: 'text-blue-600',
@@ -68,8 +68,8 @@ export default function MentorDashboard() {
       {/* BANNER SAPAAN */}
       <div className="bg-gradient-to-r from-[#0f172a] to-slate-800 rounded-3xl p-8 md:p-10 text-white shadow-lg shadow-slate-900/20 relative overflow-hidden">
         <div className="relative z-10">
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Ahlan wa Sahlan, {user?.first_name || 'Mentor'}! ✨</h2>
-          <p className="text-slate-300 max-w-xl text-lg leading-relaxed">Semoga Allah mudahkan langkahmu dalam membimbing. Pilih menu di bawah untuk mulai mengelola kelompok halaqahmu hari ini.</p>
+          <h2 className="text-xl md:text-3xl font-black mb-3">Assalamu'alaikum, {user?.first_name || 'Mentor'}! 👋</h2>
+          <p className="text-slate-200 max-w-sl text-lg leading-relaxed">Semoga Allah mudahkan langkahmu dalam membimbing. Pilih menu di bawah untuk mulai mengelola kelompok halaqahmu hari ini.</p>
         </div>
         <i className="fa-solid fa-users absolute -right-4 -bottom-8 text-9xl text-white/5 transform -rotate-12"></i>
       </div>

@@ -35,7 +35,7 @@ export default function LPPIKDashboard() {
     },
     {
       title: 'Laporan Mutabaah',
-      desc: 'Pantau catatan grafik mutabaah ibadah harian dan hafalan',
+      desc: 'Pantau catatan grafik mutabaah mentee',
       icon: HiOutlineBookOpen,
       link: '/rekap/mutabaah',
       color: 'text-blue-600',
@@ -57,7 +57,7 @@ export default function LPPIKDashboard() {
     <div className="max-w-7xl mx-auto pb-12 space-y-6">
       <PageHeader 
         title="Executive Dashboard" 
-        subtitle="Ringkasan eksekutif dan pemantauan analitik penjaminan mutu bimbingan" 
+        subtitle="Ringkasan eksekutif dan pemantauan " 
       />
 
       {/* STATISTIK KARTU ATAS (Sertifikat diganti Halaqah) */}

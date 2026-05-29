@@ -26,21 +26,14 @@ export default function AuthLayout() {
           {/* KUMPULAN LOGO BERJEJER */}
           <div className="flex items-center gap-4">
             
-            {/* Logo Utama Mine-Toring */}
-            <img 
-              src={minetoringLogo} 
-              alt="Mine-Toring" 
-              className="h-14 w-14 rounded-2xl object-cover shadow-lg border border-white/20" 
-            />
-            
-            {/* Garis Pemisah (Divider) */}
-            <div className="h-10 w-px bg-white/20"></div>
+           
             
             {/* Logo Institusi (Dalam kotak putih agar warnanya pop-out) */}
-            <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-lg">
+            <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-4xl shadow-lg">
+              <img src={minetoringLogo} alt="mentoring" className="h-9 w-auto object-contain" />
               <img src={umsColor} alt="UMS" className="h-7 w-auto object-contain" />
-              <img src={lppikColor} alt="LPPIK" className="h-5 w-auto object-contain" />
-              <img src={kmfColor} alt="KMF" className="h-7 w-auto object-contain rounded-full" />
+              <img src={lppikColor} alt="LPPIK" className="h-8 w-auto object-contain" />
+              <img src={kmfColor} alt="KMF" className="h-9 w-auto object-contain rounded-full" />
             </div>
             
           </div>

@@ -25,7 +25,7 @@ export default function MenteeDashboard() {
     },
     {
       title: 'Progres Mutabaah',
-      desc: 'Pantau progres ngajimu.',
+      desc: 'Pantau progres mutabaahmu.',
       icon: HiOutlineDocumentText,
       link: '/mutabaah/tahsin',
       color: 'text-blue-600',
@@ -68,8 +68,8 @@ export default function MenteeDashboard() {
       {/* BANNER SAPAAN (Warna disamakan dengan Mentor) */}
       <div className="bg-gradient-to-r from-[#0f172a] to-slate-800 rounded-3xl p-8 md:p-10 text-white shadow-lg shadow-slate-900/20 relative overflow-hidden">
         <div className="relative z-10">
-          <h2 className="text-3xl md:text-4xl font-black mb-3">Assalamu'alaikum, {user?.first_name || 'Mentee'}! 👋</h2>
-          <p className="text-slate-300 max-w-xl text-lg leading-relaxed">Semoga harimu berkah. Jangan lupa untuk selalu mengecek jadwal terdekat dan memperbarui catatan ibadah harianmu.</p>
+          <h2 className="text-xl md:text-3xl font-black mb-3">Assalamu'alaikum, {user?.first_name || 'Mentee'}! 👋</h2>
+          <p className="text-slate-200 max-w-l text-lg leading-relaxed">Semoga harimu berkah. Jangan lupa untuk selalu mengecek jadwal terdekat dan melihat progres mutabaahmu.</p>
         </div>
         <i className="fa-solid fa-book-quran absolute -right-4 -bottom-8 text-9xl text-white/5 transform -rotate-12"></i>
       </div>
