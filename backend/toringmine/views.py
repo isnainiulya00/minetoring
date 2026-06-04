@@ -6,14 +6,15 @@ from rest_framework.decorators import action
 from django.db.models import Q
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import PermissionDenied
 
 from .models import (
-    User, Koordinator, Mentor, Halaqah, Mentee, 
+    NilaiUjian, User, Koordinator, Mentor, Halaqah, Mentee, 
     Jadwal, MateriMentoring, JurnalPertemuan, Presensi, 
     Resume, Mutabaah, InformasiKegiatan, Sertifikat
 )
 from .serializers import (
-    UserSerializer, KoordinatorSerializer, MentorSerializer, 
+    NilaiUjianSerializer, UserSerializer, KoordinatorSerializer, MentorSerializer, 
     HalaqahSerializer, MenteeSerializer, JadwalSerializer, 
     MateriMentoringSerializer, JurnalPertemuanSerializer, 
     PresensiSerializer, ResumeSerializer, MutabaahSerializer, 
@@ -82,6 +83,17 @@ class MenteeViewSet(viewsets.ModelViewSet):
     queryset = Mentee.objects.all()
     serializer_class = MenteeSerializer
     permission_classes = [permissions.IsAuthenticated, LppikReadOnlyPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role in ['KMF', 'LPPIK'] or user.is_superuser:
+            return Mentee.objects.all()
+        if user.role == 'MENTOR':
+            return Mentee.objects.filter(halaqah__mentor__user=user)
+        if user.role == 'MENTEE':
+            return Mentee.objects.filter(user=user)
+        return Mentee.objects.none()
+
     def perform_destroy(self, instance):
         user = instance.user  # Tangkap data akun login-nya dulu
         instance.delete()     # Hapus profil Mentor-nya
@@ -341,3 +353,45 @@ def dashboard_summary(request):
         'total_mentor': total_mentor,
         'total_halaqah': total_halaqah
     })
+
+class NilaiUjianPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if not request.user.is_authenticated:
+            return False
+        if request.user.role in ['MENTEE', 'LPPIK']:
+            return request.method in permissions.SAFE_METHODS
+        return request.user.role in ['KMF', 'MENTOR']
+
+class NilaiUjianViewSet(viewsets.ModelViewSet):
+    serializer_class = NilaiUjianSerializer
+    permission_classes = [NilaiUjianPermission]
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = NilaiUjian.objects.select_related('mentee', 'dinilai_oleh')
+
+        if user.role in ['KMF', 'LPPIK'] or user.is_superuser:
+            return queryset
+        if user.role == 'MENTOR':
+            return queryset.filter(mentee__mentee_profile__halaqah__mentor__user=user)
+        if user.role == 'MENTEE':
+            return queryset.filter(mentee=user)
+        return NilaiUjian.objects.none()
+
+    def _ensure_can_grade(self, mentee_user):
+        user = self.request.user
+        if user.role == 'KMF' or user.is_superuser:
+            return
+        if user.role == 'MENTOR' and Mentee.objects.filter(user=mentee_user, halaqah__mentor__user=user).exists():
+            return
+        raise PermissionDenied('Anda tidak memiliki akses untuk menilai mentee ini.')
+
+    # Otomatis merekam siapa yang login saat nilai di-submit atau di-update
+    def perform_create(self, serializer):
+        self._ensure_can_grade(serializer.validated_data['mentee'])
+        serializer.save(dinilai_oleh=self.request.user)
+
+    def perform_update(self, serializer):
+        mentee_user = serializer.validated_data.get('mentee', serializer.instance.mentee)
+        self._ensure_can_grade(mentee_user)
+        serializer.save(dinilai_oleh=self.request.user)

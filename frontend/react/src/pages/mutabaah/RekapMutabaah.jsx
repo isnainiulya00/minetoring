@@ -1,9 +1,12 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
-import { HiOutlineDocumentDownload, HiOutlineSearch, HiOutlineFilter } from 'react-icons/hi'
+import Button from '../../components/common/Button'
+import { HiOutlineSearch, HiOutlineFilter } from 'react-icons/hi'
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import { useAuthStore } from '../../store/authStore'
+import { exportRowsToExcel } from '../../utils/exportExcel'
 
 export default function RekapMutabaah() {
   const [dataRekap, setDataRekap] = useState([])
@@ -96,33 +99,28 @@ export default function RekapMutabaah() {
       return
     }
 
-    let csvContent = "No,Nama Mentee,NIM,Tingkat,Halaqah,Pertemuan,Materi Bacaan,Rentang Halaman,Catatan\n"
-    
-    dataTerfilter.forEach((r, index) => {
-      const cleanCatatan = (r.catatan_mentor || '-').replace(/"/g, '""').replace(/\n/g, ' ')
-      
-      const baris = [
+    const rows = dataTerfilter.map((r, index) => {
+      const cleanCatatan = (r.catatan_mentor || '-').replace(/\n/g, ' ')
+
+      return [
         index + 1,
-        `"${r.nama_mentee || 'Mentee'}"`,
-        `"${r.nim_mentee || '-'}"`,
-        `"${r.tingkat || '-'}"`,
-        `"${r.nama_halaqah || '-'}"`,
-        `"Pertemuan ${r.pertemuan_ke || '-'}"`,
-        `"${r.materi_bacaan || '-'}"`,
-        `"${r.rentang_bacaan || '-'}"`,
-        `"${cleanCatatan}"`
+        r.nama_mentee || 'Mentee',
+        r.nim_mentee || '-',
+        r.tingkat || '-',
+        r.nama_halaqah || '-',
+        `Pertemuan ${r.pertemuan_ke || '-'}`,
+        r.materi_bacaan || '-',
+        r.rentang_bacaan || '-',
+        cleanCatatan,
       ]
-      csvContent += baris.join(",") + "\n"
     })
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
-    link.setAttribute("download", `Rekap_Mutabaah_${selectedPertemuan !== 'ALL' ? 'P'+selectedPertemuan : 'Semua'}_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    exportRowsToExcel({
+      columns: ['No', 'Nama Mentee', 'NIM', 'Tingkat', 'Halaqah', 'Pertemuan', 'Materi Bacaan', 'Rentang Halaman', 'Catatan'],
+      rows,
+      filename: `Rekap_Mutabaah_${selectedPertemuan !== 'ALL' ? 'P'+selectedPertemuan : 'Semua'}_${new Date().toISOString().split('T')[0]}.xls`,
+      sheetName: 'Rekap Mutabaah',
+    })
     toast.success("Berhasil mendownload laporan Excel!")
   }
 
@@ -142,13 +140,10 @@ export default function RekapMutabaah() {
           </div>
 
           {isKMF && (
-            <button 
-              onClick={handleExportExcel}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
-            >
-              <HiOutlineDocumentDownload className="text-xl" />
-              Export ke Excel
-            </button>
+            <Button variant="secondary" onClick={handleExportExcel}>
+              <HiOutlineArrowDownTray className="h-4 w-4" />
+              Export Excel
+            </Button>
           )}
         </div>
       </div>

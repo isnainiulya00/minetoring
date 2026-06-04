@@ -11,8 +11,9 @@ import { jadwalService } from '../../services/jadwalService'
 import { presensiService } from '../../services/presensiService'
 import { mentorService } from '../../services/mentorService'
 import { PRESENSI_STATUS } from '../../utils/constants'
+import { exportRowsToExcel } from '../../utils/exportExcel'
 // 👇 Import icon untuk tombol Excel
-import { HiOutlineDocumentDownload } from 'react-icons/hi' 
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 
 export default function PresensiMentor() {
   const [selectedJadwal, setSelectedJadwal] = useState('')
@@ -79,32 +80,27 @@ export default function PresensiMentor() {
       return
     }
 
-    let csvContent = "No,Nama Mentor,Kelompok Halaqah,Pertemuan Ke,Status\n"
-    
-    filtered.forEach((r, index) => {
+    const rows = filtered.map((r, index) => {
       // Tentukan status untuk di excel (Kalau masih dummy 'new-', tulis 'BELUM DIISI')
       const isDummy = String(r.id).startsWith('new-')
       const statusLabel = isDummy ? 'BELUM DIISI' : (PRESENSI_STATUS[r.status]?.label || r.status)
 
-      const baris = [
+      return [
         index + 1,
-        `"${r.mentor_nama || '-'}"`,
-        `"${r.nama_kelompok || '-'}"`,
-        `"Pertemuan ${r.pertemuan_ke || '-'}"`,
-        `"${statusLabel}"`
+        r.mentor_nama || '-',
+        r.nama_kelompok || '-',
+        `Pertemuan ${r.pertemuan_ke || '-'}`,
+        statusLabel,
       ]
-      csvContent += baris.join(",") + "\n"
     })
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
     const fileName = `Rekap_Presensi_Mentor_P${selectedJadwalDetail?.pertemuan_ke || '?'}`
-    link.setAttribute("download", `${fileName}_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    exportRowsToExcel({
+      columns: ['No', 'Nama Mentor', 'Kelompok Halaqah', 'Pertemuan Ke', 'Status'],
+      rows,
+      filename: `${fileName}_${new Date().toISOString().split('T')[0]}.xls`,
+      sheetName: 'Presensi Mentor',
+    })
     toast.success("Berhasil mendownload Excel!")
   }
 
@@ -131,13 +127,10 @@ export default function PresensiMentor() {
           </select>
         </div>
 
-        <button 
-          onClick={handleExportExcel}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 h-fit"
-        >
-          <HiOutlineDocumentDownload className="text-xl" />
-          Export ke Excel
-        </button>
+        <Button variant="secondary" onClick={handleExportExcel} className="h-fit">
+          <HiOutlineArrowDownTray className="h-4 w-4" />
+          Export Excel
+        </Button>
       </div>
 
       {isLoading ? (

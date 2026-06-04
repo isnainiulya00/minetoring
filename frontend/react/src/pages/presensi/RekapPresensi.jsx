@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import PageHeader from '../../components/common/PageHeader'
+import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
 import EmptyState from '../../components/common/EmptyState'
 import { TableSkeleton } from '../../components/common/Skeleton'
@@ -13,7 +14,8 @@ import { halaqahService } from '../../services/halaqahService'
 import { mentorService } from '../../services/mentorService'
 
 import { PRESENSI_STATUS } from '../../utils/constants'
-import { HiOutlineDocumentDownload } from 'react-icons/hi'
+import { exportRowsToExcel } from '../../utils/exportExcel'
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import { useAuthStore } from '../../store/authStore'
 
 export default function RekapPresensi() {
@@ -92,6 +94,57 @@ export default function RekapPresensi() {
     ? filteredMentee.filter(item => !item.isDummy).length 
     : filteredMentor.filter(item => !item.isDummy).length
 
+  const handleExportExcel = () => {
+    if (!selectedJadwal) {
+      toast.error("Pilih pertemuan terlebih dahulu!")
+      return
+    }
+
+    if (activeTab === 'mentee') {
+      if (!filteredMentee.length) {
+        toast.error("Tidak ada data mentee untuk diexport")
+        return
+      }
+
+      const rows = filteredMentee.map((row, index) => [
+        index + 1,
+        row.mentee_nama || '-',
+        row.nama_kelompok || '-',
+        `Pertemuan ${row.pertemuan_ke || '-'}`,
+        row.isDummy ? 'Belum Diisi' : (PRESENSI_STATUS[row.status]?.label || row.status),
+      ])
+
+      exportRowsToExcel({
+        columns: ['No', 'Nama Mentee', 'Kelompok Halaqah', 'Pertemuan Ke', 'Status Kehadiran'],
+        rows,
+        filename: `Rekap_Presensi_Mentee_P${selectedJadwalDetail?.pertemuan_ke || '?'}_${new Date().toISOString().split('T')[0]}.xls`,
+        sheetName: 'Presensi Mentee',
+      })
+    } else {
+      if (!filteredMentor.length) {
+        toast.error("Tidak ada data mentor untuk diexport")
+        return
+      }
+
+      const rows = filteredMentor.map((row, index) => [
+        index + 1,
+        row.mentor_nama || '-',
+        row.mentor_nim || '-',
+        `Pertemuan ${row.pertemuan_ke || '-'}`,
+        row.isDummy ? 'Belum Diisi' : (PRESENSI_STATUS[row.status]?.label || row.status),
+      ])
+
+      exportRowsToExcel({
+        columns: ['No', 'Nama Mentor', 'NIM', 'Pertemuan Ke', 'Status Kehadiran'],
+        rows,
+        filename: `Rekap_Presensi_Mentor_P${selectedJadwalDetail?.pertemuan_ke || '?'}_${new Date().toISOString().split('T')[0]}.xls`,
+        sheetName: 'Presensi Mentor',
+      })
+    }
+
+    toast.success("Berhasil mendownload Excel!")
+  }
+
   return (
     <div className="max-w-7xl mx-auto pb-12">
       {/* HEADER & TOGGLE/TOTAL DI KANAN */}
@@ -167,13 +220,10 @@ export default function RekapPresensi() {
         </div>
 
         {isKMF && (
-          <button 
-            onClick={() => toast.error("Fitur Export Excel segera hadir")}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2 rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 h-[42px]"
-          >
-            <HiOutlineDocumentDownload className="text-xl" />
+          <Button variant="secondary" onClick={handleExportExcel} className="h-fit">
+            <HiOutlineArrowDownTray className="h-4 w-4" />
             Export Excel
-          </button>
+          </Button>
         )}
       </div>
 

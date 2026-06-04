@@ -266,3 +266,33 @@ def sync_user_profile_from_frontend(sender, instance, created, **kwargs):
         mentor, created_profile = Mentor.objects.get_or_create(user=instance)
         mentor.nama_lengkap = instance.first_name
         mentor.save()
+
+class NilaiUjian(models.Model):
+    mentee = models.OneToOneField(User, on_delete=models.CASCADE, related_name='nilai_ujian')
+    # halaqah = models.ForeignKey(Halaqah, on_delete=models.CASCADE) # Opsional jika butuh filter per halaqah
+    
+    # 5 Aspek Penilaian (Maks 20 per aspek)
+    aspek_1 = models.IntegerField(default=0)
+    aspek_2 = models.IntegerField(default=0)
+    aspek_3 = models.IntegerField(default=0)
+    aspek_4 = models.IntegerField(default=0)
+    aspek_5 = models.IntegerField(default=0)
+    
+    # Kolom otomatis (jangan diisi manual)
+    total_nilai = models.IntegerField(default=0, editable=False)
+    status_lulus = models.BooleanField(default=False, editable=False)
+    
+    # Audit Trail: Siapa yang ngisi nilai ini? (Bisa KMF atau Mentor)
+    dinilai_oleh = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='penilai')
+
+    def save(self, *args, **kwargs):
+        # 1. Kalkulasi otomatis total nilai
+        self.total_nilai = self.aspek_1 + self.aspek_2 + self.aspek_3 + self.aspek_4 + self.aspek_5
+        
+        # 2. Validasi KKM (70)
+        self.status_lulus = self.total_nilai >= 70
+        
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Nilai {self.mentee.username} - Total: {self.total_nilai}"

@@ -46,6 +46,7 @@ const iconMap = {
   materi: HiOutlineBookOpen,
   resume: HiOutlineDocumentText,
   mutabaah: HiOutlineAcademicCap,
+  grade: HiOutlineAcademicCap,
 
   users: HiOutlineUsers,
   mentor: HiOutlineIdentification,

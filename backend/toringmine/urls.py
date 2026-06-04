@@ -1,6 +1,7 @@
 # Hapus "from django import views" biar tidak bentrok
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .views import NilaiUjianViewSet
 from .views import (
     UserViewSet, MentorViewSet, MenteeViewSet, HalaqahViewSet,
     JadwalViewSet, JurnalPertemuanViewSet,
@@ -22,6 +23,7 @@ router.register(r'resumes', ResumeViewSet, basename='resume')
 router.register(r'mutabaahs', MutabaahViewSet, basename='mutabaah')
 router.register(r'informasi', InformasiKegiatanViewSet, basename='informasi')
 router.register(r'sertifikat', SertifikatViewSet, basename='sertifikat')
+router.register(r'nilai-ujian', NilaiUjianViewSet, basename='nilai-ujian')
 
 urlpatterns = [
     # Router utama

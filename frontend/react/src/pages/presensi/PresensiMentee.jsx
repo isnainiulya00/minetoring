@@ -13,9 +13,10 @@ import { presensiService } from '../../services/presensiService'
 import { menteeService } from '../../services/menteeService' 
 import { halaqahService } from '../../services/halaqahService' 
 import { PRESENSI_STATUS } from '../../utils/constants'
+import { exportRowsToExcel } from '../../utils/exportExcel'
 
 // Import Icon & Auth Store
-import { HiOutlineDocumentDownload } from 'react-icons/hi'
+import { HiOutlineArrowDownTray } from 'react-icons/hi2'
 import { useAuthStore } from '../../store/authStore'
 
 export default function PresensiMentee() {
@@ -124,28 +125,21 @@ export default function PresensiMentee() {
       return (a.mentee_nama || '').localeCompare(b.mentee_nama || '')
     })
 
-    let csvContent = "No,Nama Mentee,Kelompok Halaqah,Pertemuan Ke,Status Kehadiran\n"
-    
-    allDataForExport.forEach((r, index) => {
-      const baris = [
+    const rows = allDataForExport.map((r, index) => [
         index + 1,
-        `"${r.mentee_nama || '-'}"`,
-        `"${r.nama_kelompok || '-'}"`,
-        `"Pertemuan ${r.pertemuan_ke || '-'}"`,
-        `"${r.statusLabel}"`
-      ]
-      csvContent += baris.join(",") + "\n"
-    })
+        r.mentee_nama || '-',
+        r.nama_kelompok || '-',
+        `Pertemuan ${r.pertemuan_ke || '-'}`,
+        r.statusLabel,
+    ])
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.setAttribute("href", url)
     const fileName = `Rekap_Presensi_Mentee_Global_P${selectedJadwalDetail?.pertemuan_ke || '?'}`
-    link.setAttribute("download", `${fileName}_${new Date().toISOString().split('T')[0]}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    exportRowsToExcel({
+      columns: ['No', 'Nama Mentee', 'Kelompok Halaqah', 'Pertemuan Ke', 'Status Kehadiran'],
+      rows,
+      filename: `${fileName}_${new Date().toISOString().split('T')[0]}.xls`,
+      sheetName: 'Presensi Mentee',
+    })
     toast.success("Berhasil mendownload Excel Global!")
   }
 
@@ -191,13 +185,10 @@ export default function PresensiMentee() {
 
         {/* Tombol Export KHUSUS KMF */}
         {isKMF && (
-          <button 
-            onClick={handleExportExcel}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all active:scale-95 h-fit"
-          >
-            <HiOutlineDocumentDownload className="text-xl" />
-            Export ke Excel
-          </button>
+          <Button variant="secondary" onClick={handleExportExcel} className="h-fit">
+            <HiOutlineArrowDownTray className="h-4 w-4" />
+            Export Excel
+          </Button>
         )}
       </div>
 

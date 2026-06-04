@@ -12,6 +12,7 @@ from .models import (
     MateriMentoring,
     Mentee,
     Mentor,
+    NilaiUjian,
     Presensi,
     Resume,
     Sertifikat,
@@ -500,3 +501,58 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         # 4. Jika lolos semua, lanjutkan buatin token bawaan
         return super().validate(attrs)
+
+class NilaiUjianSerializer(serializers.ModelSerializer):
+    mentee_nama = serializers.SerializerMethodField()
+    mentee_nim = serializers.SerializerMethodField()
+    mentee_prodi = serializers.SerializerMethodField()
+    halaqah_nama = serializers.SerializerMethodField()
+    dinilai_oleh_nama = serializers.SerializerMethodField()
+
+    class Meta:
+        model = NilaiUjian
+        fields = [
+            'id',
+            'mentee',
+            'mentee_nama',
+            'mentee_nim',
+            'mentee_prodi',
+            'halaqah_nama',
+            'aspek_1',
+            'aspek_2',
+            'aspek_3',
+            'aspek_4',
+            'aspek_5',
+            'total_nilai',
+            'status_lulus',
+            'dinilai_oleh',
+            'dinilai_oleh_nama',
+        ]
+        # Pastikan kolom ini read-only agar user tidak bisa memanipulasi total via API
+        read_only_fields = ['total_nilai', 'status_lulus', 'dinilai_oleh']
+
+    def _mentee_profile(self, obj):
+        return Mentee.objects.filter(user=obj.mentee).select_related('halaqah').first()
+
+    def get_mentee_nama(self, obj):
+        profile = self._mentee_profile(obj)
+        if profile:
+            return profile.nama_lengkap
+        return obj.mentee.first_name or obj.mentee.username
+
+    def get_mentee_nim(self, obj):
+        profile = self._mentee_profile(obj)
+        return profile.nim if profile else obj.mentee.nim
+
+    def get_mentee_prodi(self, obj):
+        profile = self._mentee_profile(obj)
+        return profile.prodi if profile else '-'
+
+    def get_halaqah_nama(self, obj):
+        profile = self._mentee_profile(obj)
+        return profile.halaqah.nama_kelompok if profile and profile.halaqah else '-'
+
+    def get_dinilai_oleh_nama(self, obj):
+        if not obj.dinilai_oleh:
+            return '-'
+        return obj.dinilai_oleh.first_name or obj.dinilai_oleh.username

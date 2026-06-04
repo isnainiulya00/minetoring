@@ -50,6 +50,10 @@ import ResumeList from '../pages/resume/ResumeList'
 import UploadResume from '../pages/resume/UploadResume'
 import ResumeReview from '../pages/resume/ResumeReview'
 
+import GradingForm from '../pages/grade/GradingForm'
+import MenteeGrade from '../pages/grade/MenteeGrade'
+import LPPIKRecapGrade from '../pages/grade/LPPIKRecapGrade'
+
 import Sertifikat from '../pages/sertifikat/Sertifikat'
 import Settings from '../pages/settings/Settings'
 
@@ -109,6 +113,7 @@ export default function AppRoutes() {
           <Route path="/halaqah/rekap" element={<HalaqahRekap />} />
           <Route path="/presensi/rekap" element={<RekapPresensi />} />
           <Route path="/rekap/mutabaah" element={<RekapMutabaah />} />
+          <Route path="/rekap/nilai" element={<LPPIKRecapGrade />} />
           
         </Route>
 
@@ -125,12 +130,14 @@ export default function AppRoutes() {
           <Route path="/dashboard/mentee" element={<MenteeDashboard />} />
           <Route path="/presensi/diri" element={<PresensiDiri />} />
           <Route path="/resume/upload" element={<UploadResume />} />
+          <Route path="/nilai-saya" element={<MenteeGrade />} />
         </Route> {/* 👈 TAG PENUTUP INI TADI HILANG */}
 
         {/* 5. IRISAN KMF & MENTOR (KMF sebagai Backup Mentor) */}
         <Route element={<RoleProtectedRoute allowedRoles={[ROLES.KMF, ROLES.MENTOR]} />}>
           <Route path="/halaqah/:id/members" element={<HalaqahMember />} />
           <Route path="/presensi/mentee" element={<PresensiMentee />} />
+          <Route path="/nilai/input" element={<GradingForm />} />
         </Route>
 
       </Route>

@@ -4,7 +4,7 @@ import { ROLES } from './constants'
 // ROLE CHECK
 // ===============================
 
-export const isAdmin = (user) => user?.role === ROLES.LPPIK
+export const isAdmin = (user) => user?.role === ROLES.ADMIN
 export const isKMF = (user) => user?.role === ROLES.KMF
 export const isMentor = (user) => user?.role === ROLES.MENTOR
 export const isMentee = (user) => user?.role === ROLES.MENTEE
@@ -52,13 +52,15 @@ export function getLoginRedirectPath(user) {
 export const ROUTE_ACCESS = {
   '/dashboard': [],
   '/management': [ROLES.KMF],
-  '/halaqah': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/jadwal': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE], // Jadwal & Materi di sini
-  '/presensi': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/resume': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/mutabaah': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/sertifikat': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
-  '/informasi': [ROLES.LPPIK, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/halaqah': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/jadwal': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE], // Jadwal & Materi di sini
+  '/presensi': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/resume': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/mutabaah': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/nilai': [ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/rekap': [ROLES.ADMIN, ROLES.KMF],
+  '/sertifikat': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
+  '/informasi': [ROLES.ADMIN, ROLES.KMF, ROLES.MENTOR, ROLES.MENTEE],
   '/profile': [],
   '/settings': [],
 }
@@ -89,6 +91,7 @@ export function getNavItems(user) {
         { path: '/halaqah/rekap', label: 'Rekap Halaqah', icon: 'halaqah' },
         { path: '/presensi/rekap', label: 'Rekap Presensi', icon: 'presensi' },
         { path: "/rekap/mutabaah", label: "Rekap Mutabaah", icon: "mutabaah" },
+        { path: '/rekap/nilai', label: 'Rekap Nilai', icon: 'grade' },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
         { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
@@ -105,6 +108,8 @@ export function getNavItems(user) {
         { path: '/presensi/rekap', label: 'Rekap Presensi', icon: 'presensi' },
         
         { path: "/rekap/mutabaah", label: "Rekap Mutabaah", icon: "mutabaah" },
+        { path: '/nilai/input', label: 'Input Nilai', icon: 'grade' },
+        { path: '/rekap/nilai', label: 'Rekap Nilai', icon: 'grade' },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' },
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
         { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
@@ -117,6 +122,7 @@ export function getNavItems(user) {
         { path: '/presensi/mentee', label: 'Isi Presensi', icon: 'presensi' },
         { path: '/mutabaah/', label: 'Mutabaah', icon: 'mutabaah' },
         { path: '/resume/review', label: 'Review Resume', icon: 'resume' },
+        { path: '/nilai/input', label: 'Input Nilai', icon: 'grade' },
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' }, // Ubah labelnya biar jelas
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
        { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
@@ -128,6 +134,7 @@ export function getNavItems(user) {
         { path: '/jadwal', label: 'Jadwal & Materi', icon: 'jadwal' }, // Ubah labelnya biar jelas
         { path: '/presensi/diri', label: 'Presensi Saya', icon: 'presensi' },
         { path: '/resume/upload', label: 'Upload Resume', icon: 'resume' },
+        { path: '/nilai-saya', label: 'Nilai Saya', icon: 'grade' },
         { path: '/mutabaah/tahsin', label: 'Mutabaah', icon: 'mutabaah' }, 
         { path: '/informasi', label: 'Informasi', icon: 'dashboard' },
         { label: 'Sertifikat', path: '/sertifikat', icon: 'sertifikat' }
