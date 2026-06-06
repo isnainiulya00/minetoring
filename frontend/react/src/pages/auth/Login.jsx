@@ -8,6 +8,10 @@ import { useAuthStore } from '../../store/authStore'
 import { getLoginRedirectPath } from '../../utils/roleHelpers'
 import Button from '../../components/common/Button'
 import Input from '../../components/common/Input'
+import minetoringLogo from '../../assets/2.jpeg'
+import umsColor from '../../assets/ums-dark.png'
+import lppikColor from '../../assets/lppik.png'
+import kmfColor from '../../assets/kmf.png'
 
 export default function Login() {
   const [errorMsg, setErrorMsg] = useState('')
@@ -73,7 +77,14 @@ export default function Login() {
         <h1 className="font-display text-2xl font-bold text-gray-900">MINE-TORING</h1>
         <p className="text-sm text-gray-500">Masuk ke akun mentoring AIK</p>
       </div>
-
+      <div className="mb-8 flex flex-col items-center justify-center gap-3">
+        
+        <div className="flex items-center justify-center gap-3 rounded-3xl bg-slate-50 px-4 py-2 text-sm text-slate-500 shadow-sm shadow-slate-200">
+          <img src={umsColor} alt="UMS" className="h-7 w-auto object-contain" />
+          <img src={lppikColor} alt="LPPIK" className="h-7 w-auto object-contain" />
+          <img src={kmfColor} alt="KMF" className="h-7 w-auto object-contain rounded-full" />
+        </div>
+      </div>
       <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm">
         <h2 className="font-display text-xl font-semibold text-gray-900">Masuk</h2>
         <p className="mt-1 mb-6 text-sm text-gray-500">Gunakan kredensial akun Anda</p>

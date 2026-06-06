@@ -4,7 +4,7 @@ import { Outlet } from 'react-router-dom'
 // IMPORT LOGO 
 // (Pastikan ekstensi file sesuai dengan yang ada di foldermu)
 // ===============================
-import minetoringLogo from '../assets/minetoring-logo.jpeg'
+import minetoringLogo from '../assets/2.jpeg'
 import umsColor from '../assets/ums.png'
 import lppikColor from '../assets/lppik.png'
 import kmfColor from '../assets/kmf.png'
@@ -24,25 +24,27 @@ export default function AuthLayout() {
         <div className="relative z-10">
           
           {/* KUMPULAN LOGO BERJEJER */}
-          <div className="flex items-center gap-4">
+          
             
            
             
-            {/* Logo Institusi (Dalam kotak putih agar warnanya pop-out) */}
-            <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-4xl shadow-lg">
-              <img src={minetoringLogo} alt="mentoring" className="h-9 w-auto object-contain" />
-              <img src={umsColor} alt="UMS" className="h-7 w-auto object-contain" />
-              <img src={lppikColor} alt="LPPIK" className="h-8 w-auto object-contain" />
-              <img src={kmfColor} alt="KMF" className="h-9 w-auto object-contain rounded-full" />
-            </div>
-            
-          </div>
+           
 
           {/* TEKS JUDUL & DESKRIPSI */}
-          <h1 className="mt-8 font-display text-4xl font-bold leading-tight tracking-tight">
-            MINE-TORING
-          </h1>
-          <p className="mt-4 max-w-md text-lg text-gray-300 leading-relaxed">
+          <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+            <img
+              src={minetoringLogo}
+              alt="Mine-Toring"
+              className="h-14 w-14 rounded-3xl border border-white/20 bg-white/10 object-cover shadow-lg"
+            />
+            <div>
+              <h1 className="text-4xl font-display font-bold tracking-tight text-white">
+                MINE-TORING
+              </h1>
+           
+            </div>
+          </div>
+          <p className="mt-6 max-w-md text-lg text-gray-300 leading-relaxed">
             Platform terintegrasi manajemen mentoring AIK — presensi, materi, resume, dan monitoring halaqah dalam satu sistem.
           </p>
         </div>

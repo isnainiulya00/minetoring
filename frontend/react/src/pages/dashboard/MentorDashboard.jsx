@@ -55,7 +55,7 @@ export default function MentorDashboard() {
       title: 'Pusat Informasi',
       desc: 'Pengumuman dan informasi terbaru dari pengurus KMF.',
       icon: HiOutlineInformationCircle,
-      link: '#', // Ganti kalau ada rutenya
+      link: '/informasi', // Ganti kalau ada rutenya
       color: 'text-purple-600',
       bg: 'bg-purple-50',
       hover: 'hover:border-purple-300 hover:shadow-purple-100'
@@ -64,16 +64,6 @@ export default function MentorDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto pb-12 space-y-8">
-      
-      {/* BANNER SAPAAN */}
-      <div className="bg-gradient-to-r from-[#0f172a] to-slate-800 rounded-3xl p-8 md:p-10 text-white shadow-lg shadow-slate-900/20 relative overflow-hidden">
-        <div className="relative z-10">
-          <h2 className="text-xl md:text-3xl font-black mb-3">Assalamu'alaikum, {user?.first_name || 'Mentor'}! 👋</h2>
-          <p className="text-slate-200 max-w-sl text-lg leading-relaxed">Semoga Allah mudahkan langkahmu dalam membimbing. Pilih menu di bawah untuk mulai mengelola kelompok halaqahmu hari ini.</p>
-        </div>
-        <i className="fa-solid fa-users absolute -right-4 -bottom-8 text-9xl text-white/5 transform -rotate-12"></i>
-      </div>
-
       {/* QUICK ACTIONS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {quickActions.map((action, idx) => (
