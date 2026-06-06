@@ -1,4 +1,4 @@
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -10,6 +10,19 @@ from django.dispatch import receiver
 # 1. MANAJEMEN USER & PROFIL
 # ==========================================
 
+class CustomUserManager(UserManager):
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault('role', 'KMF')
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault('is_active', True)
+
+        if extra_fields.get('role') != 'KMF':
+            extra_fields['role'] = 'KMF'
+
+        return super().create_superuser(username, email, password, **extra_fields)
+
+
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('LPPIK', 'Admin LPPIK'),
@@ -17,6 +30,8 @@ class User(AbstractUser):
         ('MENTOR', 'Mentor'),
         ('MENTEE', 'Mentee'),
     )
+
+    objects = CustomUserManager()
 
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='MENTEE')
     nim = models.CharField(max_length=20, unique=True, null=True, blank=True) 
