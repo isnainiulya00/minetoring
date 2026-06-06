@@ -249,22 +249,33 @@ class Sertifikat(models.Model):
 
 @receiver(post_save, sender=User)
 def sync_user_profile_from_frontend(sender, instance, created, **kwargs):
-    # 1. JIKA YANG DI-EDIT/DI-SIMPAN ADALAH MENTEE
+    # Abaikan superuser untuk mencegah efek samping saat membuat/masuk akun admin
+    if instance.is_superuser:
+        return
+
     if instance.role == 'MENTEE':
-        # Ambil atau buat profil menteenya dulu
+        # Hanya buat atau perbarui profil Mentee bila NIM tersedia
+        if not instance.nim:
+            return
+
         mentee, created_profile = Mentee.objects.get_or_create(
             user=instance,
-            defaults={'prodi': '-'} # Jaga-jaga kalau user baru biar gak error prodi kosong
+            defaults={
+                'prodi': '-',
+                'nim': instance.nim,
+                'nama_lengkap': instance.first_name or instance.username,
+            }
         )
-        # Sinkronisasikan data terbaru dari form Frontend
+
         mentee.nim = instance.nim
-        mentee.nama_lengkap = instance.first_name
+        mentee.nama_lengkap = instance.first_name or instance.username
+        if not mentee.prodi:
+            mentee.prodi = '-'
         mentee.save()
 
-    # 2. JIKA YANG DI-EDIT/DI-SIMPAN ADALAH MENTOR
     elif instance.role == 'MENTOR':
         mentor, created_profile = Mentor.objects.get_or_create(user=instance)
-        mentor.nama_lengkap = instance.first_name
+        mentor.nama_lengkap = instance.first_name or instance.username
         mentor.save()
 
 class NilaiUjian(models.Model):
