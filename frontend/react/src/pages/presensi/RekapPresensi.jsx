@@ -5,6 +5,7 @@ import Button from '../../components/common/Button'
 import Badge from '../../components/common/Badge'
 import EmptyState from '../../components/common/EmptyState'
 import { TableSkeleton } from '../../components/common/Skeleton'
+import AttendanceModal from './AttendanceModal' // 👈 1. Import AttendanceModal
 import { useApi } from '../../hooks/useApi'
 
 import { jadwalService } from '../../services/jadwalService'
@@ -23,6 +24,10 @@ export default function RekapPresensi() {
   const [selectedHalaqah, setSelectedHalaqah] = useState('') 
   const [activeTab, setActiveTab] = useState('mentee')
 
+  // 👈 2. State untuk mengontrol baris data dan jenis role yang akan di-input di Modal
+  const [modalRow, setModalRow] = useState(null)
+  const [modalType, setModalType] = useState('Mentee')
+
   const user = useAuthStore((state) => state.user)
   const isKMF = user?.role?.toUpperCase() === 'KMF' || user?.role?.toUpperCase() === 'KOORDINATOR'
 
@@ -30,13 +35,13 @@ export default function RekapPresensi() {
   const { data: jadwalData } = useApi(jadwalService.getAll, [])
   const { data: halaqahData } = useApi(halaqahService.getAll, [])
   
-  // Fetch Data Mentee
+  // Fetch Data Mentee (Destructure fungsi refetch agar data auto-reload tanpa reload browser)
   const { data: menteeData, loading: loadingMentee } = useApi(menteeService.getAll, [])
-  const { data: presensiData } = useApi(presensiService.getAll, [])
+  const { data: presensiData, refetch: refetchPresensi } = useApi(presensiService.getAll, [])
   
   // Fetch Data Mentor
   const { data: mentorData, loading: loadingMentor } = useApi(mentorService.getAll, [])
-  const { data: presensiMentorData } = useApi(presensiService.getAll, [])
+  const { data: presensiMentorData, refetch: refetchPresensiMentor } = useApi(presensiService.getAll, [])
 
   const jadwalList = Array.isArray(jadwalData) ? jadwalData : (jadwalData?.results || [])
   const halaqahList = Array.isArray(halaqahData) ? halaqahData : (halaqahData?.results || [])
@@ -93,6 +98,16 @@ export default function RekapPresensi() {
   const currentTotalFilled = activeTab === 'mentee' 
     ? filteredMentee.filter(item => !item.isDummy).length 
     : filteredMentor.filter(item => !item.isDummy).length
+
+  // Fungsi trigger refresh data rekap setelah modal disimpan
+  const handleRefetchData = () => {
+    if (activeTab === 'mentee') {
+      refetchPresensi()
+    } else {
+      refetchPresensiMentor()
+    }
+    setModalRow(null)
+  }
 
   const handleExportExcel = () => {
     if (!selectedJadwal) {
@@ -244,6 +259,8 @@ export default function RekapPresensi() {
                   <th className="px-6 py-4 font-semibold">Kelompok Halaqah</th>
                   <th className="px-6 py-4 font-semibold text-center">Pertemuan</th>
                   <th className="px-6 py-4 font-semibold text-center">Status</th>
+                  {/* 👈 3a. Kondisional Header Aksi Mentee */}
+                  {isKMF && <th className="px-6 py-4 font-semibold text-center">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
@@ -267,6 +284,21 @@ export default function RekapPresensi() {
                           {row.isDummy ? 'Belum Diisi' : meta.label}
                         </Badge>
                       </td>
+                      {/* 👈 3b. Kondisional Tombol Aksi Mentee */}
+                      {isKMF && (
+                        <td className="px-6 py-4 text-center">
+                          <Button 
+                            size="sm" 
+                            className="rounded-xl"
+                            onClick={() => {
+                              setModalRow(row);
+                              setModalType('Mentee');
+                            }}
+                          >
+                            {row.isDummy ? 'Isi Kehadiran' : 'Edit'}
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -285,6 +317,8 @@ export default function RekapPresensi() {
                   <th className="px-6 py-4 font-semibold">Identitas Mentor</th>
                   <th className="px-6 py-4 font-semibold text-center">Pertemuan</th>
                   <th className="px-6 py-4 font-semibold text-center">Status</th>
+                  {/* 👈 4a. Kondisional Header Aksi Mentor */}
+                  {isKMF && <th className="px-6 py-4 font-semibold text-center">Aksi</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-sm font-medium text-gray-700">
@@ -306,6 +340,21 @@ export default function RekapPresensi() {
                           {row.isDummy ? 'Belum Diisi' : meta.label}
                         </Badge>
                       </td>
+                      {/* 👈 4b. Kondisional Tombol Aksi Mentor */}
+                      {isKMF && (
+                        <td className="px-6 py-4 text-center">
+                          <Button 
+                            size="sm" 
+                            className="rounded-xl"
+                            onClick={() => {
+                              setModalRow(row);
+                              setModalType('Mentor');
+                            }}
+                          >
+                            {row.isDummy ? 'Isi Kehadiran' : 'Edit'}
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
@@ -313,6 +362,17 @@ export default function RekapPresensi() {
             </table>
           </div>
         )
+      )}
+
+      {/* 👈 5. RENDERING ATTENDANCE MODAL UTK KMF */}
+      {isKMF && (
+        <AttendanceModal 
+          open={Boolean(modalRow)} 
+          presensiRow={modalRow} 
+          onClose={() => setModalRow(null)} 
+          onSaved={handleRefetchData} 
+          type={modalType}
+        />
       )}
     </div>
   )

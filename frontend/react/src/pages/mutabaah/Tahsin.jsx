@@ -258,7 +258,7 @@ export default function Tahsin() {
                         <span className="text-[10px] font-black text-white bg-gray-900 px-2 py-0.5 rounded">P-{r.pertemuan_ke}</span>
                         <span className="text-xs text-gray-400 font-medium">{r.tanggal}</span>
                       </div>
-                      <p className="text-sm font-bold text-gray-800">Surat{r.materi_bacaan} <span className="text-gray-400 mx-2">•</span>Ayat{r.rentang_bacaan}</p>
+                      <p className="text-sm font-bold text-gray-800">{r.materi_bacaan} <span className="text-gray-400 mx-2">•</span>Ayat {r.rentang_bacaan}</p>
                       {r.catatan_mentor && <p className="text-xs text-gray-500 mt-1 italic">"{r.catatan_mentor}"</p>}
                     </div>
                     <div className="flex items-center gap-4">
